@@ -44,14 +44,14 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
     return { success: false, error: 'Invalid email or password.' }
   }
 
-  const { token } = (await res.json()) as { token: string }
+  const { access_token } = (await res.json()) as { access_token: string }
   const cookieStore = await cookies()
-  cookieStore.set('auth_token', token, {
+  cookieStore.set('auth_token', access_token, {
     httpOnly: true,
     secure: process.env['NODE_ENV'] === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 7, // TODO: configure token expiration time
   })
 
   redirect('/')
@@ -77,6 +77,7 @@ export async function registerUser(rawData: unknown): Promise<AuthActionResult> 
     }),
   })
 
+  // TODO: More explicit error handling based on status code
   if (!res.ok) {
     return { success: false, error: 'Registration failed. This email may already be in use.' }
   }
