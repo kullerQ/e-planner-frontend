@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
+import { isBackendHealthy } from '@/lib/api/health'
 
 const JWT_SECRET = process.env['JWT_SECRET']
 const AUTH_ROUTES = ['/auth/login', '/auth/register']
+
+function isAuthRoute(pathname: string): boolean {
+  return AUTH_ROUTES.some((route) => pathname.startsWith(route))
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  return pathname === '/' || pathname.startsWith('/dashboard')
+}
 
 async function hasValidAuthToken(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get('auth_token')?.value
@@ -18,23 +27,47 @@ async function hasValidAuthToken(request: NextRequest): Promise<boolean> {
   }
 }
 
+function redirect(request: NextRequest, pathname: string): NextResponse {
+  return NextResponse.redirect(new URL(pathname, request.url))
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
-  const isAuthenticated = await hasValidAuthToken(request)
-  const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route))
-  const isProtectedRoute = pathname === '/' || pathname.startsWith('/dashboard')
+  const isDevelopment = process.env['NODE_ENV'] === 'development'
+  const backendHealthy = await isBackendHealthy()
 
-  if (isAuthRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (!backendHealthy) {
+    if (!isDevelopment) {
+      if (pathname === '/offline') {
+        return NextResponse.next()
+      }
+      return redirect(request, '/offline')
+    }
+
+    if (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) {
+      return redirect(request, '/dashboard')
+    }
+
+    return NextResponse.next()
   }
 
-  if (isProtectedRoute && !isAuthenticated) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+  if (pathname === '/offline') {
+    return redirect(request, isDevelopment ? '/dashboard' : '/auth/login')
+  }
+
+  const isAuthenticated = await hasValidAuthToken(request)
+
+  if (isAuthRoute(pathname) && isAuthenticated) {
+    return redirect(request, '/dashboard')
+  }
+
+  if (isProtectedRoute(pathname) && !isAuthenticated) {
+    return redirect(request, '/auth/login')
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/auth/:path*'],
+  matcher: ['/', '/dashboard/:path*', '/auth/:path*', '/offline'],
 }

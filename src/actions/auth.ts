@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { messages } from '@/lib/messages'
+import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import { loginSchema, registerSchema } from '@/lib/validation'
 
 interface AuthTokenResponse {
@@ -14,6 +15,10 @@ export type AuthActionResult =
   | { success: false; error: string; fieldErrors?: Record<string, string[]> }
 
 export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
+  if (await isDevOfflineMockEnabled()) {
+    return { success: false, error: messages.offline.actionUnavailable }
+  }
+
   const parsed = loginSchema.safeParse(rawData)
   if (!parsed.success) {
     return {
@@ -23,11 +28,16 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
     }
   }
 
-  const res = await fetch(`${process.env['API_URL']}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(parsed.data),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${process.env['API_URL']}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parsed.data),
+    })
+  } catch {
+    return { success: false, error: messages.offline.actionUnavailable }
+  }
 
   if (!res.ok) {
     return { success: false, error: messages.auth.errors.invalidCredentials }
@@ -52,6 +62,10 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
 }
 
 export async function registerUser(rawData: unknown): Promise<AuthActionResult> {
+  if (await isDevOfflineMockEnabled()) {
+    return { success: false, error: messages.offline.actionUnavailable }
+  }
+
   const parsed = registerSchema.safeParse(rawData)
   if (!parsed.success) {
     return {
@@ -61,15 +75,20 @@ export async function registerUser(rawData: unknown): Promise<AuthActionResult> 
     }
   }
 
-  const res = await fetch(`${process.env['API_URL']}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      password: parsed.data.password,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${process.env['API_URL']}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        password: parsed.data.password,
+      }),
+    })
+  } catch {
+    return { success: false, error: messages.offline.actionUnavailable }
+  }
 
   if (!res.ok) {
     return { success: false, error: messages.auth.errors.registrationFailed }

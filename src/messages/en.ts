@@ -41,6 +41,27 @@ export const messages = {
       genericServerError: 'Something went wrong. Please try again.',
     },
   },
+  offline: {
+    title: 'Server unavailable',
+    description: 'The backend is temporarily unreachable. Please try again shortly.',
+    tryAgain: 'Try again',
+    devModeHint: 'Development mock mode is available',
+    actionUnavailable: 'This action is unavailable while the backend is offline.',
+    fallbackDailyPhrase: 'Take one small step forward today.',
+  },
+  dashboard: {
+    title: 'Dashboard',
+    welcome: 'Welcome to E-Planner',
+    offline: {
+      tasks: 'No tasks available in offline mode',
+      recycleBin: 'No deleted tasks available in offline mode',
+      calendar: 'No calendar items available in offline mode',
+      folders: 'No folders available in offline mode',
+      todaysTasksWidget: "Today's Tasks are unavailable in offline mode",
+      activityWidget: 'Activity Graph is unavailable in offline mode',
+      dailyPhraseWidget: 'Daily Phrase is running in offline fallback mode',
+    },
+  },
   validation: {
     nameRequired: 'Name is required',
     nameMax: 'Name must be 255 characters or fewer',
