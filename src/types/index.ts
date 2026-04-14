@@ -5,7 +5,6 @@ export type TaskStatus =
   | 'in_progress'
   | 'delayed'
   | 'completed'
-  | 'cancelled'
 
 export interface ChecklistItem {
   id: string
@@ -31,6 +30,7 @@ export interface Task {
   checklist: ChecklistItem[]
   colorHex: string
   colorInherited: boolean
+  isDeleted: boolean
   deletedAt: string | null
   deletedAutoAt: string | null
   createdAt: string

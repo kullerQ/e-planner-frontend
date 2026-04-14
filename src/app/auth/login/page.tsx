@@ -1,21 +1,18 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loginUser } from '@/actions/auth'
-
-const LoginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
+import { messages } from '@/lib/messages'
+import { loginSchema } from '@/lib/validation'
 
 type FieldErrors = { email?: string; password?: string }
 
 export default function LoginPage() {
+  const authMessages = messages.auth
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -24,7 +21,7 @@ export default function LoginPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    const result = LoginSchema.safeParse({ email, password })
+    const result = loginSchema.safeParse({ email, password })
     if (!result.success) {
       const fe = result.error.flatten().fieldErrors
       const next: FieldErrors = {}
@@ -44,7 +41,7 @@ export default function LoginPage() {
           if (res.fieldErrors['password']?.[0]) next.password = res.fieldErrors['password'][0]
           setErrors(next)
         } else {
-          toast.error(res.error)
+          toast.error(res.error || authMessages.errors.invalidCredentials)
         }
       }
     })
@@ -54,13 +51,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-start bg-background">
       <div className="max-w-sm w-full mx-auto mt-20 px-4">
         <div className="mb-8 text-center">
-          <span className="text-2xl font-semibold text-foreground">E-Planner</span>
+          <span className="text-2xl font-semibold text-foreground">{authMessages.brand}</span>
         </div>
         <div className="bg-card border border-border/60 rounded-lg shadow-sm p-8">
-          <h1 className="text-xl font-semibold text-foreground mb-6">Sign in</h1>
+          <h1 className="text-xl font-semibold text-foreground mb-6">{authMessages.login.title}</h1>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{authMessages.fields.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -75,7 +72,7 @@ export default function LoginPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{authMessages.fields.password}</Label>
               <Input
                 id="password"
                 type="password"
@@ -90,13 +87,13 @@ export default function LoginPage() {
               )}
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isPending}>
-              {isPending ? 'Signing in…' : 'Sign in'}
+              {isPending ? authMessages.login.submitting : authMessages.login.submit}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground text-center mt-4">
-            Don&apos;t have an account?{' '}
+            {authMessages.login.noAccount}{' '}
             <Link href="/auth/register" className="text-primary hover:underline">
-              Register
+              {authMessages.login.registerLink}
             </Link>
           </p>
         </div>

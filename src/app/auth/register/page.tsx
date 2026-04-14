@@ -1,24 +1,13 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { registerUser } from '@/actions/auth'
-
-const RegisterSchema = z
-  .object({
-    name: z.string().min(1, 'Name is required'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+import { messages } from '@/lib/messages'
+import { registerSchema } from '@/lib/validation'
 
 type FieldErrors = {
   name?: string
@@ -28,6 +17,7 @@ type FieldErrors = {
 }
 
 export default function RegisterPage() {
+  const authMessages = messages.auth
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,7 +28,7 @@ export default function RegisterPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    const result = RegisterSchema.safeParse({ name, email, password, confirmPassword })
+    const result = registerSchema.safeParse({ name, email, password, confirmPassword })
     if (!result.success) {
       const fe = result.error.flatten().fieldErrors
       const next: FieldErrors = {}
@@ -63,7 +53,7 @@ export default function RegisterPage() {
             next.confirmPassword = res.fieldErrors['confirmPassword'][0]
           setErrors(next)
         } else {
-          toast.error(res.error)
+          toast.error(res.error || authMessages.errors.registrationFailed)
         }
       }
     })
@@ -73,13 +63,13 @@ export default function RegisterPage() {
     <div className="min-h-screen flex flex-col items-center justify-start bg-background">
       <div className="max-w-sm w-full mx-auto mt-20 px-4">
         <div className="mb-8 text-center">
-          <span className="text-2xl font-semibold text-foreground">E-Planner</span>
+          <span className="text-2xl font-semibold text-foreground">{authMessages.brand}</span>
         </div>
         <div className="bg-card border border-border/60 rounded-lg shadow-sm p-8">
-          <h1 className="text-xl font-semibold text-foreground mb-6">Create account</h1>
+          <h1 className="text-xl font-semibold text-foreground mb-6">{authMessages.register.title}</h1>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{authMessages.fields.name}</Label>
               <Input
                 id="name"
                 type="text"
@@ -94,7 +84,7 @@ export default function RegisterPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{authMessages.fields.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -109,7 +99,7 @@ export default function RegisterPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{authMessages.fields.password}</Label>
               <Input
                 id="password"
                 type="password"
@@ -124,7 +114,7 @@ export default function RegisterPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{authMessages.fields.confirmPassword}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -138,14 +128,15 @@ export default function RegisterPage() {
                 <p className="text-xs text-destructive mt-1">{errors.confirmPassword}</p>
               )}
             </div>
+            <p className="text-xs text-muted-foreground">{authMessages.register.passwordRequirements}</p>
             <Button type="submit" className="w-full mt-2" disabled={isPending}>
-              {isPending ? 'Creating account…' : 'Create account'}
+              {isPending ? authMessages.register.submitting : authMessages.register.submit}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground text-center mt-4">
-            Already have an account?{' '}
+            {authMessages.register.hasAccount}{' '}
             <Link href="/auth/login" className="text-primary hover:underline">
-              Sign in
+              {authMessages.register.loginLink}
             </Link>
           </p>
         </div>
