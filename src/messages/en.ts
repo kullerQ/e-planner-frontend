@@ -82,4 +82,7 @@ export const messages = {
     checklistTextMax: 'Text must be 500 characters or fewer',
     colorHexInvalid: 'Must be a valid hex color (#RRGGBB)',
   },
+  a11y: {
+    close: 'Close',
+  },
 } as const
