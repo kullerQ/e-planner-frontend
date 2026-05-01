@@ -1,22 +1,40 @@
+import { TaskListClient } from './TaskListClient'
 import { messages } from '@/lib/messages'
-import { OFFLINE_TASKS_PLACEHOLDER } from '@/lib/mock/offlineContent'
-import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
+import type { Task, TaskGroup } from '@/types'
+
+async function fetchJson<T>(url: string, tag: string): Promise<T> {
+  const response = await fetch(url, {
+    next: { tags: [tag] },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${tag}`)
+  }
+
+  return response.json() as Promise<T>
+}
 
 export default async function TasksPage() {
-  const isOfflineMock = await isDevOfflineMockEnabled()
+  try {
+    const apiUrl = process.env['API_URL']
+    if (!apiUrl) {
+      throw new Error('API_URL is not configured')
+    }
 
-  return (
-    <main className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold text-foreground">Tasks</h1>
-      {isOfflineMock ? (
-        <section className="rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-          {OFFLINE_TASKS_PLACEHOLDER.items.length === 0 ? messages.dashboard.offline.tasks : null}
+    const [tasks, groups] = await Promise.all([
+      fetchJson<Task[]>(`${apiUrl}/tasks`, 'tasks'),
+      fetchJson<TaskGroup[]>(`${apiUrl}/groups`, 'groups'),
+    ])
+
+    return <TaskListClient tasks={tasks} groups={groups} />
+  } catch {
+    return (
+      <main className="p-6">
+        <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.tasks.title}</h1>
+        <section className="mt-4 rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
+          {messages.dashboard.tasks.connectionHint}
         </section>
-      ) : (
-        <section className="rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-          Tasks list is connected to backend data.
-        </section>
-      )}
-    </main>
-  )
+      </main>
+    )
+  }
 }

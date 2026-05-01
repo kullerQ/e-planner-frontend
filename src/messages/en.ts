@@ -52,6 +52,12 @@ export const messages = {
   dashboard: {
     title: 'Dashboard',
     welcome: 'Welcome to E-Planner',
+    tasks: {
+      title: 'List',
+      searchPlaceholder: 'Search tasks',
+      empty: 'No tasks found',
+      connectionHint: 'Task list is connected to backend data.',
+    },
     offline: {
       tasks: 'No tasks available in offline mode',
       recycleBin: 'No deleted tasks available in offline mode',
