@@ -1,24 +1,24 @@
+import { RecycleBinClient } from './RecycleBinClient'
+import { backendFetchJson } from '@/lib/api/server'
 import { messages } from '@/lib/messages'
-import { OFFLINE_RECYCLE_BIN_PLACEHOLDER } from '@/lib/mock/offlineContent'
-import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
+import type { Task } from '@/types'
 
 export default async function RecycleBinPage() {
-  const isOfflineMock = await isDevOfflineMockEnabled()
+  try {
+    const tasks = await backendFetchJson<Task[]>('/tasks?deleted=true', {
+      next: { tags: ['tasks'] },
+    })
+    const deletedTasks = tasks.filter((task) => task.deletedAt !== null)
 
-  return (
-    <main className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold text-foreground">Recycle Bin</h1>
-      {isOfflineMock ? (
-        <section className="rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-          {OFFLINE_RECYCLE_BIN_PLACEHOLDER.items.length === 0
-            ? messages.dashboard.offline.recycleBin
-            : null}
+    return <RecycleBinClient tasks={deletedTasks} />
+  } catch {
+    return (
+      <main className="p-6">
+        <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.recycleBin.title}</h1>
+        <section className="mt-4 rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
+          {messages.dashboard.tasks.connectionHint}
         </section>
-      ) : (
-        <section className="rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
-          Deleted tasks are loaded from backend.
-        </section>
-      )}
-    </main>
-  )
+      </main>
+    )
+  }
 }

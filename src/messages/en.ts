@@ -52,6 +52,22 @@ export const messages = {
   dashboard: {
     title: 'Dashboard',
     welcome: 'Welcome to E-Planner',
+    recycleBin: {
+      title: 'Recycle Bin',
+      emptyButton: 'Empty Recycle Bin',
+      emptyConfirmTitle: 'Empty Recycle Bin',
+      emptyConfirmAction: 'Empty Recycle Bin',
+      emptyMessage: 'Recycle Bin is empty',
+      infoBanner: 'Tasks are permanently deleted after 7 days.',
+      deletedLabel: 'Deleted:',
+      autoDeletesLabel: 'Auto-deletes:',
+      restore: 'Restore',
+      deletePermanently: 'Delete Permanently',
+      permanentDeleteTitle: 'Delete task permanently?',
+      permanentDeleteDescription: 'This cannot be undone.',
+      permanentDeleteAction: 'Delete Permanently',
+      emptyAllDescription: 'Permanently delete all {count} tasks? This cannot be undone.',
+    },
     tasks: {
       title: 'List',
       searchPlaceholder: 'Search tasks',
