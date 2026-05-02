@@ -11,6 +11,7 @@ import {
   Folder01Icon,
   InformationCircleIcon,
   ListViewIcon,
+  MoreVerticalIcon,
   Search01Icon,
   SortByDown02Icon,
   SortByUp02Icon,
@@ -29,6 +30,9 @@ import {
 import { BulkSelectionPanel } from '@/components/tasks/BulkSelectionPanel'
 import { TaskRow } from '@/components/tasks/TaskRow'
 import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet'
+import { ColorPickerPopover } from '@/components/shared/ColorPickerPopover'
+import { DeleteGroupDialog } from '@/components/groups/DeleteGroupDialog'
+import { renameGroup, updateGroupColor } from '@/actions/groups'
 import { filterTasks, groupTasks, sortTasks } from '@/lib/taskFilters'
 import { cn } from '@/lib/utils'
 import { messages } from '@/lib/messages'
@@ -40,6 +44,7 @@ import {
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useDebounce } from '@/hooks/useDebounce'
+import { toast } from 'sonner'
 import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
 
 interface TaskListClientProps {
@@ -141,10 +146,24 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const exitSelectMode = useSelectionStore((state) => state.exitSelectMode)
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [optimisticGroups, setOptimisticGroups] = useState<TaskGroup[]>(groups)
+
+  // Inline rename state
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null)
+  const [deleteGroupName, setDeleteGroupName] = useState('')
 
   useEffect(() => {
     setOptimisticTasks(tasks)
   }, [tasks])
+
+  useEffect(() => {
+    setOptimisticGroups(groups)
+  }, [groups])
 
   useEffect(() => {
     if (!isSelecting) {
@@ -219,21 +238,21 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   }
 
   const groupedTasks = useMemo(() => {
-    const grouped = groupTasks(optimisticTasks, effectiveGroupBy, groups)
+    const grouped = groupTasks(optimisticTasks, effectiveGroupBy, optimisticGroups)
     const withSortedTasks = new Map<string, Task[]>()
     for (const [key, bucket] of grouped.entries()) {
       withSortedTasks.set(key, sortTasks(bucket, effectiveSortBy, effectiveSortDirection))
     }
     return withSortedTasks
-  }, [optimisticTasks, groups, effectiveGroupBy, effectiveSortBy, effectiveSortDirection])
+  }, [optimisticTasks, optimisticGroups, effectiveGroupBy, effectiveSortBy, effectiveSortDirection])
 
   const matchedTaskIds = useMemo(() => {
     return new Set(filterTasks(optimisticTasks, debouncedQuery).map((task) => task.id))
   }, [optimisticTasks, debouncedQuery])
 
   const groupsById = useMemo(() => {
-    return new Map(groups.map((group) => [group.id, group] as const))
-  }, [groups])
+    return new Map(optimisticGroups.map((group) => [group.id, group] as const))
+  }, [optimisticGroups])
   const tagsById = useMemo(() => {
     return new Map(tags.map((tag) => [tag.id, tag] as const))
   }, [tags])
@@ -243,6 +262,81 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
       ...current,
       [groupKey]: !current[groupKey],
     }))
+  }
+
+  // Inline rename handlers
+  function startRenaming(group: TaskGroup) {
+    setRenamingGroupId(group.id)
+    setRenameValue(group.name)
+  }
+
+  function cancelRenaming() {
+    setRenamingGroupId(null)
+    setRenameValue('')
+  }
+
+  async function submitRename(groupId: string) {
+    const trimmed = renameValue.trim()
+    if (trimmed.length === 0) {
+      cancelRenaming()
+      return
+    }
+
+    // Optimistic update
+    setOptimisticGroups((current) =>
+      current.map((g) => (g.id === groupId ? { ...g, name: trimmed } : g))
+    )
+    setRenamingGroupId(null)
+    setRenameValue('')
+
+    try {
+      await renameGroup(groupId, trimmed)
+    } catch (error) {
+      // Revert on error
+      setOptimisticGroups(groups)
+      const message = error instanceof Error ? error.message : messages.dashboard.folders.renameError
+      toast.error(message)
+    }
+  }
+
+  function handleRenameKeyDown(event: React.KeyboardEvent, groupId: string) {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      submitRename(groupId)
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      cancelRenaming()
+    }
+  }
+
+  // Color change handler
+  async function handleColorChange(groupId: string, colorHex: string) {
+    // Optimistic update
+    setOptimisticGroups((current) =>
+      current.map((g) => (g.id === groupId ? { ...g, colorHex } : g))
+    )
+
+    try {
+      await updateGroupColor(groupId, colorHex)
+    } catch (error) {
+      // Revert on error
+      setOptimisticGroups(groups)
+      const message = error instanceof Error ? error.message : messages.dashboard.folders.colorUpdateError
+      toast.error(message)
+    }
+  }
+
+  // Delete dialog handlers
+  function openDeleteDialog(group: TaskGroup) {
+    setDeleteGroupId(group.id)
+    setDeleteGroupName(group.name)
+    setDeleteDialogOpen(true)
+  }
+
+  function handleGroupDeleted() {
+    // Optimistically remove the group and its tasks from UI
+    setOptimisticGroups((current) => current.filter((g) => g.id !== deleteGroupId))
+    setOptimisticTasks((current) => current.filter((t) => t.groupId !== deleteGroupId))
   }
 
   const selectedSortByOption = sortByOptions.find((option) => option.value === effectiveSortBy)
@@ -432,55 +526,94 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                   parsedGroupKey.value !== 'none' &&
                   groupsById.has(parsedGroupKey.value)
 
+                const currentGroup = shouldRenderFolderActions
+                  ? groupsById.get(parsedGroupKey.value)
+                  : undefined
+                const isRenaming = currentGroup !== undefined && renamingGroupId === currentGroup.id
+
                 return (
                   <div key={groupKey}>
                     {shouldRenderHeader ? (
                       <div className="sticky top-0 z-10 bg-muted/30 border-b border-border/50 px-4 py-2 flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroupCollapse(groupKey)}
-                          className="flex items-center gap-2 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm px-1"
-                          aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} group ${groupLabel}`}
-                        >
-                          <HugeiconsIcon
-                            icon={ArrowDown01Icon}
-                            size={14}
-                            className={cn('transition-transform', isCollapsed && '-rotate-90')}
-                          />
-                          <span className="size-3 rounded-sm" style={{ backgroundColor: groupColor }} />
-                          <span className="text-sm font-semibold text-foreground capitalize">{groupLabel}</span>
-                          <span className="text-xs text-muted-foreground">({visibleCount})</span>
-                        </button>
-                        {shouldRenderFolderActions ? (
+                        {isRenaming ? (
+                          <div className="flex items-center gap-2 flex-1 mr-2">
+                            <span
+                              className="size-3 rounded-sm"
+                              style={{ backgroundColor: groupColor }}
+                            />
+                            <Input
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onKeyDown={(e) => currentGroup && handleRenameKeyDown(e, currentGroup.id)}
+                              onBlur={() => currentGroup && submitRename(currentGroup.id)}
+                              className="h-8 text-sm flex-1"
+                              autoFocus
+                              aria-label={messages.dashboard.folders.aria.renameInput}
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => toggleGroupCollapse(groupKey)}
+                            className="flex items-center gap-2 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm px-1"
+                            aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} group ${groupLabel}`}
+                          >
+                            <HugeiconsIcon
+                              icon={ArrowDown01Icon}
+                              size={14}
+                              className={cn('transition-transform', isCollapsed && '-rotate-90')}
+                            />
+                            <span className="size-3 rounded-sm" style={{ backgroundColor: groupColor }} />
+                            <span className="text-sm font-semibold text-foreground capitalize">{groupLabel}</span>
+                            <span className="text-xs text-muted-foreground">({visibleCount})</span>
+                          </button>
+                        )}
+                        {shouldRenderFolderActions && currentGroup && !isRenaming ? (
                           <Popover>
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
-                                className="min-h-11 px-2 text-sm text-muted-foreground rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                className="min-h-11 min-w-11 inline-flex items-center justify-center text-sm text-muted-foreground rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                 aria-label={`Group actions for ${groupLabel}`}
                               >
-                                ...
+                                <HugeiconsIcon icon={MoreVerticalIcon} size={16} />
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent align="end" className="w-44 p-1">
-                              <button
-                                type="button"
-                                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                              >
-                                Rename
-                              </button>
-                              <button
-                                type="button"
-                                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                              >
-                                Change Color
-                              </button>
-                              <button
-                                type="button"
-                                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                              >
-                                Delete
-                              </button>
+                            <PopoverContent align="end" className="w-48 p-2">
+                              <div className="flex flex-col gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => startRenaming(currentGroup)}
+                                  className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                >
+                                  {messages.dashboard.folders.menu.rename}
+                                </button>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                    >
+                                      {messages.dashboard.folders.menu.changeColor}
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent align="end" className="w-auto p-2">
+                                    <ColorPickerPopover
+                                      value={currentGroup.colorHex}
+                                      colorInherited={false}
+                                      onChange={(colorHex) => handleColorChange(currentGroup.id, colorHex)}
+                                      onResetToGroup={() => {}}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <button
+                                  type="button"
+                                  onClick={() => openDeleteDialog(currentGroup)}
+                                  className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                >
+                                  {messages.dashboard.folders.menu.delete}
+                                </button>
+                              </div>
                             </PopoverContent>
                           </Popover>
                         ) : null}
@@ -514,7 +647,15 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
           />
         ) : null}
       </div>
-      {!isSelecting ? <TaskDetailSheet tasks={optimisticTasks} groups={groups} tags={tags} /> : null}
+      {!isSelecting ? <TaskDetailSheet tasks={optimisticTasks} groups={optimisticGroups} tags={tags} /> : null}
+
+      <DeleteGroupDialog
+        groupId={deleteGroupId}
+        groupName={deleteGroupName}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onDeleted={handleGroupDeleted}
+      />
     </>
   )
 }
