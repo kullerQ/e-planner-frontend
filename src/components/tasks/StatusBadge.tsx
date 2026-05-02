@@ -2,6 +2,7 @@
 
 import type { TaskStatus } from '@/types'
 import { cn } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 
 interface StatusBadgeProps {
   status: TaskStatus
@@ -10,10 +11,10 @@ interface StatusBadgeProps {
 }
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'To do',
-  in_progress: 'In progress',
-  delayed: 'Delayed',
-  completed: 'Completed',
+  todo: messages.tasks.status.todo,
+  in_progress: messages.tasks.status.in_progress,
+  delayed: messages.tasks.status.delayed,
+  completed: messages.tasks.status.completed,
 }
 
 const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; dot: string }> = {

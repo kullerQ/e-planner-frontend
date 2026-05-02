@@ -54,19 +54,19 @@ interface TaskListClientProps {
 }
 
 const groupByOptions = [
-  { value: 'none' as const, label: '—', icon: ListViewIcon },
-  { value: 'folder' as const, label: 'Folder', icon: Folder01Icon },
-  { value: 'tag' as const, label: 'Tag', icon: CheckmarkCircle01Icon },
-  { value: 'date' as const, label: 'Date', icon: Calendar03Icon },
-  { value: 'status' as const, label: 'Status', icon: InformationCircleIcon },
+  { value: 'none' as const, label: messages.taskList.groupBy.none, icon: ListViewIcon },
+  { value: 'folder' as const, label: messages.taskList.groupBy.folder, icon: Folder01Icon },
+  { value: 'tag' as const, label: messages.taskList.groupBy.tag, icon: CheckmarkCircle01Icon },
+  { value: 'date' as const, label: messages.taskList.groupBy.date, icon: Calendar03Icon },
+  { value: 'status' as const, label: messages.taskList.groupBy.status, icon: InformationCircleIcon },
 ]
 
 const sortByOptions = [
-  { value: 'date' as const, label: 'Date', icon: Calendar03Icon },
-  { value: 'tag' as const, label: 'Tag', icon: Tag01Icon },
-  { value: 'title' as const, label: 'Title', icon: Search01Icon },
-  { value: 'created' as const, label: 'Created', icon: Folder01Icon },
-  { value: 'status' as const, label: 'Status', icon: InformationCircleIcon },
+  { value: 'date' as const, label: messages.taskList.sortBy.date, icon: Calendar03Icon },
+  { value: 'tag' as const, label: messages.taskList.sortBy.tag, icon: Tag01Icon },
+  { value: 'title' as const, label: messages.taskList.sortBy.title, icon: Search01Icon },
+  { value: 'created' as const, label: messages.taskList.sortBy.created, icon: Folder01Icon },
+  { value: 'status' as const, label: messages.taskList.sortBy.status, icon: InformationCircleIcon },
 ]
 
 // Complexity and priority controls are intentionally hidden in the current UI.
@@ -89,16 +89,16 @@ function getGroupLabel(
   const parsed = parseGroupKey(key)
   if (parsed.dimension === 'folder') {
     if (parsed.value === 'none') {
-      return 'Ungrouped'
+      return messages.taskList.groups.ungrouped
     }
-    return groupsById.get(parsed.value)?.name ?? 'Ungrouped'
+    return groupsById.get(parsed.value)?.name ?? messages.taskList.groups.ungrouped
   }
 
   if (parsed.dimension === 'tag') {
     if (parsed.value === 'none') {
-      return 'No tag'
+      return messages.taskList.groups.noTag
     }
-    return tagsById.get(parsed.value)?.name ?? 'No tag'
+    return tagsById.get(parsed.value)?.name ?? messages.taskList.groups.noTag
   }
 
   if (parsed.dimension === 'priority') {
@@ -108,12 +108,12 @@ function getGroupLabel(
     return parsed.value.replaceAll('_', ' ')
   }
   if (parsed.dimension === 'date') {
-    if (parsed.value === 'overdue') return 'Overdue'
-    if (parsed.value === 'today') return 'Today'
-    if (parsed.value === 'upcoming') return 'Upcoming'
-    return 'No due date'
+    if (parsed.value === 'overdue') return messages.taskList.groups.overdue
+    if (parsed.value === 'today') return messages.taskList.groups.today
+    if (parsed.value === 'upcoming') return messages.taskList.groups.upcoming
+    return messages.taskList.groups.noDueDate
   }
-  return 'All tasks'
+  return messages.taskList.groups.allTasks
 }
 
 function getGroupSwatchColor(key: string, groupsById: Map<string, TaskGroup>): string {
@@ -349,7 +349,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
           <header className="flex items-center justify-between gap-4 pb-5 border-b border-border/50 mb-6">
             <h1 className="text-2xl font-semibold text-foreground">{tasksMessages.title}</h1>
             <Button type="button" onClick={() => openTaskSheet(null)}>
-              [+ New Task]
+              {messages.taskList.newTaskButton}
             </Button>
           </header>
 
@@ -368,7 +368,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               />
               <button
                 type="button"
-                aria-label="Clear search"
+                aria-label={messages.taskList.clearSearch}
                 onClick={() => setSearchQuery('')}
                 className={cn(
                   'absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-opacity',
@@ -384,12 +384,12 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               onValueChange={(value) => setGroupBy(value as GroupByDimension)}
             >
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Group by">
+                <SelectValue placeholder={messages.taskList.groupByLabel}>
                   <span className="inline-flex items-center gap-2">
                     {selectedGroupByOption ? (
                       <HugeiconsIcon icon={selectedGroupByOption.icon} size={14} className="text-muted-foreground" />
                     ) : null}
-                    <span>{selectedGroupByOption?.label ?? 'Group by'}</span>
+                    <span>{selectedGroupByOption?.label ?? messages.taskList.groupByLabel}</span>
                   </span>
                 </SelectValue>
               </SelectTrigger>
@@ -414,7 +414,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                   size={14}
                   className="text-muted-foreground"
                 />
-                <span>{selectedSortByOption?.label ?? 'Order by'}</span>
+                <span>{selectedSortByOption?.label ?? messages.taskList.orderByLabel}</span>
               </span>
               <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="text-muted-foreground" />
             </Button>
@@ -460,7 +460,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               </span>
               <span className="inline-flex items-center gap-2">
                 <HugeiconsIcon icon={SortByUp02Icon} size={14} className="text-muted-foreground" />
-                <span>Ascending</span>
+                <span>{messages.taskList.ascending}</span>
               </span>
             </button>
             <button
@@ -482,7 +482,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               </span>
               <span className="inline-flex items-center gap-2">
                 <HugeiconsIcon icon={SortByDown02Icon} size={14} className="text-muted-foreground" />
-                <span>Descending</span>
+                <span>{messages.taskList.descending}</span>
               </span>
             </button>
           </PopoverContent>
@@ -500,13 +500,13 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               }}
               className="min-w-[132px] justify-center"
             >
-              {isSelecting ? `Done (${selectedIds.size})` : 'Select'}
+              {isSelecting ? messages.taskList.doneButton.replace('{count}', String(selectedIds.size)) : messages.taskList.selectButton}
             </Button>
           </section>
 
           <section className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
             {!hasHydrated ? (
-              <div className="p-6 text-sm text-muted-foreground">Loading tasks...</div>
+              <div className="p-6 text-sm text-muted-foreground">{messages.taskList.loading}</div>
             ) : null}
             {hasHydrated && groupedTasks.size === 0 ? (
               <div className="p-6 text-sm text-muted-foreground">{tasksMessages.empty}</div>
@@ -556,7 +556,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                             type="button"
                             onClick={() => toggleGroupCollapse(groupKey)}
                             className="flex items-center gap-2 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm px-1"
-                            aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} group ${groupLabel}`}
+                            aria-label={messages.taskList.groupAria.replace('{action}', isCollapsed ? messages.taskList.expandGroup : messages.taskList.collapseGroup).replace('{name}', groupLabel)}
                           >
                             <HugeiconsIcon
                               icon={ArrowDown01Icon}
@@ -574,7 +574,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                               <button
                                 type="button"
                                 className="min-h-11 min-w-11 inline-flex items-center justify-center text-sm text-muted-foreground rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                                aria-label={`Group actions for ${groupLabel}`}
+                                aria-label={messages.taskList.groupActionsAria.replace('{name}', groupLabel)}
                               >
                                 <HugeiconsIcon icon={MoreVerticalIcon} size={16} />
                               </button>

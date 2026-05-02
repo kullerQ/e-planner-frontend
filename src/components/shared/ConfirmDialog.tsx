@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -68,7 +69,7 @@ export function ConfirmDialog({
             <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="min-h-11">{messages.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
               disabled={pending}
@@ -84,7 +85,7 @@ export function ConfirmDialog({
                     className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
                     aria-hidden="true"
                   />
-                  Working...
+                  {messages.common.working}
                 </span>
               ) : (
                 confirmLabel

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import type { Tag, TaskGroup } from '@/types'
 
@@ -64,7 +65,7 @@ export function BulkSelectionPanel({
         clearSelection()
         toast.success(successMessage)
       } catch {
-        toast.error('Bulk operation failed. Please try again.')
+        toast.error(messages.bulkActions.errorBulk)
       }
     })
   }
@@ -88,7 +89,7 @@ export function BulkSelectionPanel({
         await bulkAddTags(selectedTaskIds, tagIds)
         onBulkTagsAdded(selectedTaskIds, tagIds)
       },
-      `${selectedCount} task${selectedCount === 1 ? '' : 's'} updated with tags`
+      messages.bulkActions.successTags.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
     )
   }
 
@@ -103,9 +104,9 @@ export function BulkSelectionPanel({
         onBulkDeleted(selectedTaskIds)
         clearSelection()
         exitSelectMode()
-        toast.info(`${selectedCount} task${selectedCount === 1 ? '' : 's'} moved to Recycle Bin`)
+        toast.info(messages.bulkActions.successDeleted.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's'))
       } catch {
-        toast.error('Failed to delete selected tasks')
+        toast.error(messages.bulkActions.errorDelete)
       }
     })
   }
@@ -116,36 +117,36 @@ export function BulkSelectionPanel({
         'w-72 bg-card/90 backdrop-blur-sm border-l border-border/60 p-4 flex flex-col gap-4',
         'transition-[width,opacity] duration-200 ease-out'
       )}
-      aria-label="Bulk selection panel"
+      aria-label={messages.bulkActions.panelAria}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-foreground">
-          {selectedCount} task{selectedCount === 1 ? '' : 's'} selected
+          {messages.bulkActions.selectedCount.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')}
         </p>
         <Button type="button" variant="ghost" onClick={exitSelectMode} className="min-h-11 px-3">
-          Cancel
+          {messages.bulkActions.cancel}
         </Button>
       </div>
 
       <div className="border-t border-border/60" />
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Assign to Folder</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{messages.bulkActions.assignToFolder}</p>
         <Select
           disabled={selectedCount === 0 || pendingAction}
           onValueChange={(value) => {
             const groupId = value === '__none__' ? null : value
             runBulkAction(
               () => bulkMoveToGroup(selectedTaskIds, groupId),
-              `${selectedCount} task${selectedCount === 1 ? '' : 's'} moved`
+              messages.bulkActions.successMoved.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
             )
           }}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select folder" />
+            <SelectValue placeholder={messages.bulkActions.selectFolder} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">No folder</SelectItem>
+            <SelectItem value="__none__">{messages.bulkActions.noFolder}</SelectItem>
             {groups.map((group) => (
               <SelectItem key={group.id} value={group.id}>
                 {group.name}
@@ -156,7 +157,7 @@ export function BulkSelectionPanel({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add Tags</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{messages.bulkActions.addTags}</p>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -166,7 +167,7 @@ export function BulkSelectionPanel({
               className="w-full justify-between"
             >
               <span className="truncate text-left">
-                {selectedTagIds.size > 0 ? `${selectedTagIds.size} tag(s) selected` : 'Select tags'}
+                {selectedTagIds.size > 0 ? messages.bulkActions.tagsSelected.replace('{count}', String(selectedTagIds.size)) : messages.bulkActions.selectTags}
               </span>
               <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="text-muted-foreground" />
             </Button>
@@ -176,11 +177,11 @@ export function BulkSelectionPanel({
               <Input
                 value={tagQuery}
                 onChange={(event) => setTagQuery(event.target.value)}
-                placeholder="Search tags"
+                placeholder={messages.bulkActions.searchTags}
               />
               <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
                 {filteredTags.length === 0 ? (
-                  <p className="px-2 py-1 text-xs text-muted-foreground">No matching tags</p>
+                  <p className="px-2 py-1 text-xs text-muted-foreground">{messages.bulkActions.noMatchingTags}</p>
                 ) : (
                   filteredTags.map((tag) => {
                     const checked = selectedTagIds.has(tag.id)
@@ -205,7 +206,7 @@ export function BulkSelectionPanel({
                 disabled={selectedTagIds.size === 0 || selectedCount === 0 || pendingAction}
                 className="w-full"
               >
-                Apply tags
+                {messages.bulkActions.applyTags}
               </Button>
             </div>
           </PopoverContent>
@@ -222,15 +223,15 @@ export function BulkSelectionPanel({
         onClick={() => setIsDeleteDialogOpen(true)}
       >
         <HugeiconsIcon icon={Delete02Icon} size={16} />
-        Delete Selected
+        {messages.bulkActions.deleteSelected}
       </Button>
 
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        title="Delete selected tasks"
-        description={`Move ${selectedCount} task${selectedCount === 1 ? '' : 's'} to Recycle Bin?`}
-        confirmLabel="Move to Recycle Bin"
+        title={messages.bulkActions.deleteTitle}
+        description={messages.bulkActions.deleteDescription.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')}
+        confirmLabel={messages.bulkActions.deleteAction}
         onConfirm={handleDeleteSelected}
         isPending={pendingAction}
       />

@@ -37,6 +37,7 @@ import { apiFetch } from '@/lib/api'
 import { useWeekStartsOn } from '@/lib/preferences'
 import { taskTitleSchema } from '@/lib/validation'
 import { cn } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
 
@@ -58,10 +59,10 @@ interface DraftState {
 }
 
 const statusOptions: Array<{ value: TaskStatus; label: string }> = [
-  { value: 'todo', label: 'To do' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'delayed', label: 'Delayed' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'todo', label: messages.tasks.status.todo },
+  { value: 'in_progress', label: messages.tasks.status.in_progress },
+  { value: 'delayed', label: messages.tasks.status.delayed },
+  { value: 'completed', label: messages.tasks.status.completed },
 ]
 
 function toDate(iso: string | null): Date | undefined {
@@ -74,11 +75,11 @@ function toDate(iso: string | null): Date | undefined {
 
 function formatDueDateLabel(iso: string | null): string {
   if (iso === null) {
-    return 'No due date'
+    return messages.tasks.dueDateEmpty
   }
   const parsed = new Date(iso)
   if (Number.isNaN(parsed.getTime())) {
-    return 'No due date'
+    return messages.tasks.dueDateEmpty
   }
   return new Intl.DateTimeFormat(undefined, {
     day: '2-digit',
@@ -270,7 +271,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
   async function handleCreate() {
     const parsed = taskTitleSchema.safeParse(draft.title.trim())
     if (!parsed.success) {
-      setFieldFailure('title', parsed.error.issues[0]?.message ?? 'Title is required')
+      setFieldFailure('title', parsed.error.issues[0]?.message ?? messages.validation.taskTitleRequired)
       return
     }
 
@@ -288,7 +289,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
         closeSheet()
         router.refresh()
       } catch {
-        setFieldFailure('submit', 'Could not create task. Please try again.')
+        setFieldFailure('submit', messages.tasks.errorCreate)
       }
     })
   }
@@ -299,7 +300,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
     }
     const parsed = taskTitleSchema.safeParse(draft.title.trim())
     if (!parsed.success) {
-      setFieldFailure('title', parsed.error.issues[0]?.message ?? 'Title is required')
+      setFieldFailure('title', parsed.error.issues[0]?.message ?? messages.validation.taskTitleRequired)
       return
     }
 
@@ -317,7 +318,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
         setBaseline({ ...draft, title: parsed.data })
         router.refresh()
       } catch {
-        setFieldFailure('submit', 'Could not save task changes.')
+        setFieldFailure('submit', messages.tasks.errorSave)
       }
     })
   }
@@ -329,11 +330,11 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
     startTransition(async () => {
       try {
         await softDeleteTask(taskId)
-        toast.info('Task moved to Recycle Bin')
+        toast.info(messages.tasks.movedToRecycle)
         closeSheet()
         router.refresh()
       } catch {
-        setFieldFailure('submit', 'Delete failed. Please try again.')
+        setFieldFailure('submit', messages.tasks.errorDelete)
       }
     })
   }
@@ -377,7 +378,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
         applyCreatedTagLocally(createdTag)
         setTagQuery('')
       } catch {
-        toast.error('Tag already exists or could not be created.')
+        toast.error(messages.tasks.tagCreateError)
       }
     })
   }
@@ -394,7 +395,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
 
     const nextName = editingTagName.trim()
     if (nextName.length === 0) {
-      toast.error('Tag name is required.')
+      toast.error(messages.tasks.tagNameRequired)
       return
     }
 
@@ -416,7 +417,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
         setEditingTagId(null)
         setEditingTagName('')
       } catch {
-        toast.error('Could not rename tag.')
+        toast.error(messages.tasks.tagRenameError)
       }
     })
   }
@@ -437,7 +438,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
           )
         }
       } catch {
-        toast.error('Could not delete tag.')
+        toast.error(messages.tasks.tagDeleteError)
       }
     })
   }
@@ -490,11 +491,11 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
       >
         <div className="flex h-full flex-col">
           <SheetHeader className="space-y-0 border-b border-border/50 px-5 pb-3 pt-5">
-            <SheetTitle className="text-base">{mode === 'create' ? 'Create Task' : 'Task Details'}</SheetTitle>
+            <SheetTitle className="text-base">{mode === 'create' ? messages.tasks.createTitle : messages.tasks.editTitle}</SheetTitle>
             <SheetDescription className="sr-only">
               {mode === 'create'
-                ? 'Create a new task with metadata and notes.'
-                : 'Edit task metadata and notes.'}
+                ? messages.tasks.createDescription
+                : messages.tasks.editDescription}
             </SheetDescription>
           </SheetHeader>
 
@@ -509,7 +510,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                     event.preventDefault()
                     const parsed = taskTitleSchema.safeParse(draft.title.trim())
                     if (!parsed.success) {
-                      setFieldFailure('title', parsed.error.issues[0]?.message ?? 'Title is required')
+                      setFieldFailure('title', parsed.error.issues[0]?.message ?? messages.validation.taskTitleRequired)
                       return
                     }
                     setDraftField('title', parsed.data)
@@ -518,7 +519,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                     resetField('title')
                   }
                 }}
-                placeholder="Task title"
+                placeholder={messages.tasks.titlePlaceholder}
                 className={cn(
                   'h-12 rounded-none border-0 border-b-2 border-border/60 bg-transparent px-2 text-xl font-semibold shadow-none transition-colors',
                   'placeholder:text-muted-foreground/60',
@@ -533,13 +534,13 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
             <div className="space-y-4 rounded-lg border border-border/60 bg-card/80 p-3 backdrop-blur-sm">
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="text-xs text-muted-foreground">{messages.tasks.statusLabel}</p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
                         className="inline-flex min-h-11 w-full items-center rounded-sm px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        aria-label="Update status"
+                        aria-label={messages.tasks.statusAction}
                       >
                         <StatusBadge status={draft.status} />
                       </button>
@@ -582,13 +583,13 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Due date</p>
+                <p className="text-xs text-muted-foreground">{messages.tasks.dueDate}</p>
                 <div className="relative">
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        aria-label="Pick due date"
+                        aria-label={messages.tasks.dueDateAction}
                         className={cn(
                           'flex min-h-11 w-full cursor-pointer items-center justify-between rounded-sm border border-border/60 bg-background px-3 text-left text-sm transition-colors hover:bg-accent/40',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
@@ -623,7 +624,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                       onClick={() => {
                         setDraftField('dueDate', null)
                       }}
-                      aria-label="Clear due date"
+                      aria-label={messages.tasks.dueDateClear}
                       className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                     >
                       <HugeiconsIcon icon={Cancel01Icon} size={14} />
@@ -636,7 +637,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Tags</p>
+                <p className="text-xs text-muted-foreground">{messages.tasks.tags}</p>
                 <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-border/60 bg-background p-2">
                   {draft.tagIds.map((tagId) => {
                     const tag = tagsById.get(tagId)
@@ -660,7 +661,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                             const next = draft.tagIds.filter((id) => id !== tagId)
                             setDraftField('tagIds', next)
                           }}
-                          aria-label={`Remove tag ${tag?.name ?? tagId}`}
+                          aria-label={messages.tasks.tagsRemoveAria.replace('{name}', tag?.name ?? tagId)}
                         >
                           <HugeiconsIcon icon={Cancel01Icon} size={12} />
                         </button>
@@ -673,7 +674,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                       <button
                         type="button"
                         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm border border-dashed border-border text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        aria-label="Add tag"
+                        aria-label={messages.tasks.tagsAdd}
                       >
                         <HugeiconsIcon icon={PlusSignIcon} size={14} />
                       </button>
@@ -696,7 +697,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                             handleCreateTagFromQuery()
                           }
                         }}
-                        placeholder="Search tags"
+                        placeholder={messages.tasks.tagsSearch}
                       />
                       <div className="max-h-40 space-y-1 overflow-y-auto">
                         {canCreateTagFromQuery ? (
@@ -709,7 +710,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                               'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
                             )}
                           >
-                            <span>Create &quot;{tagQuery.trim()}&quot;</span>
+                            <span>{messages.tasks.tagsCreate.replace('{name}', tagQuery.trim())}</span>
                             <HugeiconsIcon icon={PlusSignIcon} size={14} />
                           </button>
                         ) : null}
@@ -745,7 +746,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                                         setEditingTagName('')
                                       }}
                                     >
-                                      Cancel
+                                      {messages.tasks.tagsCancel}
                                     </Button>
                                     <Button
                                       type="button"
@@ -754,7 +755,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                                       onClick={handleRenameTag}
                                       disabled={isTagMutationPending}
                                     >
-                                      Save
+                                      {messages.tasks.tagsSave}
                                     </Button>
                                   </div>
                                 </div>
@@ -783,7 +784,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                                         'text-muted-foreground hover:bg-background/70 hover:text-foreground',
                                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
                                       )}
-                                      aria-label={`Rename tag ${tag.name}`}
+                                      aria-label={messages.tasks.tagsRenameAria.replace('{name}', tag.name)}
                                       onClick={() => beginTagRename(tag)}
                                       disabled={isTagMutationPending}
                                     >
@@ -796,7 +797,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                                         'text-destructive/90 hover:bg-background/70 hover:text-destructive',
                                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
                                       )}
-                                      aria-label={`Delete tag ${tag.name}`}
+                                      aria-label={messages.tasks.tagsDeleteAria.replace('{name}', tag.name)}
                                       onClick={() => handleDeleteTag(tag.id)}
                                       disabled={isTagMutationPending}
                                     >
@@ -810,7 +811,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                         })}
                         {visibleTags.length === 0 && !canCreateTagFromQuery ? (
                           <p className="px-2 py-1 text-sm text-muted-foreground">
-                            No matching tags yet.
+                            {messages.tasks.tagsEmpty}
                           </p>
                         ) : null}
                       </div>
@@ -823,7 +824,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Group</p>
+                <p className="text-xs text-muted-foreground">{messages.tasks.group}</p>
                 <Select
                   value={selectedGroupValue}
                   onValueChange={(value) => {
@@ -832,10 +833,10 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                   }}
                 >
                   <SelectTrigger className="min-h-11">
-                    <SelectValue placeholder="No folder" />
+                    <SelectValue placeholder={messages.tasks.groupNone} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No folder</SelectItem>
+                    <SelectItem value="none">{messages.tasks.groupNone}</SelectItem>
                     {groups.map((group) => (
                       <SelectItem key={group.id} value={group.id}>
                         {group.name}
@@ -861,7 +862,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
           <footer className="flex items-center justify-between gap-2 border-t border-border/50 px-5 py-4">
             {mode === 'edit' ? (
               <Button type="button" variant="destructive" className="min-h-11" onClick={handleDelete}>
-                Delete Task
+                {messages.tasks.deleteTask}
               </Button>
             ) : (
               <span />
@@ -875,7 +876,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                 onClick={requestCloseSheet}
                 disabled={isPending}
               >
-                Cancel
+                {messages.tasks.cancel}
               </Button>
               <Button
                 type="button"
@@ -883,7 +884,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                 onClick={mode === 'create' ? handleCreate : handleSaveAll}
                 disabled={isPending}
               >
-                {mode === 'create' ? 'Create Task' : 'Save Changes'}
+                {mode === 'create' ? messages.tasks.createAction : messages.tasks.saveChanges}
               </Button>
             </div>
           </footer>
@@ -896,13 +897,13 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
       <AlertDialog open={confirmCloseOpen} onOpenChange={setConfirmCloseOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Save changes before closing?</AlertDialogTitle>
+            <AlertDialogTitle>{messages.tasks.confirmCloseTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              You have unsaved changes in this task. Save them before closing the details sheet?
+              {messages.tasks.confirmCloseDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-11">Keep editing</AlertDialogCancel>
+            <AlertDialogCancel className="min-h-11">{messages.tasks.keepEditing}</AlertDialogCancel>
             <AlertDialogAction
               className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(event) => {
@@ -914,7 +915,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                 setConfirmCloseOpen(false)
               }}
             >
-              Discard changes
+              {messages.tasks.discardChanges}
             </AlertDialogAction>
             <AlertDialogAction
               className="min-h-11"
@@ -923,7 +924,7 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                 void handleSaveAndClose()
               }}
             >
-              Save and close
+              {messages.tasks.saveAndClose}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
