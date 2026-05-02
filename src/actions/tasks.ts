@@ -2,43 +2,165 @@
 
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
+import { backendFetch } from '@/lib/api/server'
+import {
+  colorHexSchema,
+  tagNameSchema,
+  taskTitleSchema,
+} from '@/lib/validation'
+import type { TaskPriority, TaskStatus } from '@/types'
 
 const updateStatusSchema = z.object({
   status: z.enum(['todo', 'in_progress', 'delayed', 'completed']),
 })
 
+const taskStatusSchema = z.enum(['todo', 'in_progress', 'delayed', 'completed'])
+const taskPrioritySchema = z.enum(['critical', 'high', 'medium', 'low', 'none'])
+const taskIdSchema = z.string().min(1, 'Task id is required')
+const dueDateSchema = z.string().datetime().nullable()
+const groupIdSchema = z.string().min(1).nullable()
+const tagIdsSchema = z.array(tagNameSchema.or(z.string().min(1))).max(50)
+const notesSchema = z.string().max(50_000).nullable()
+
+const createTaskSchema = z.object({
+  title: taskTitleSchema,
+  status: taskStatusSchema.default('todo'),
+  priority: taskPrioritySchema.default('medium'),
+  dueDate: dueDateSchema.optional(),
+  groupId: groupIdSchema.optional(),
+  tagIds: tagIdsSchema.optional(),
+  notes: notesSchema.optional(),
+  colorHex: colorHexSchema.optional(),
+})
+
+const updateTaskSchema = z.object({
+  title: taskTitleSchema.optional(),
+  status: taskStatusSchema.optional(),
+  priority: taskPrioritySchema.optional(),
+  dueDate: dueDateSchema.optional(),
+  groupId: groupIdSchema.optional(),
+  tagIds: tagIdsSchema.optional(),
+  notes: notesSchema.optional(),
+  colorHex: colorHexSchema.optional(),
+})
+
+const updateTaskFieldSchema = z.discriminatedUnion('field', [
+  z.object({ field: z.literal('title'), value: taskTitleSchema }),
+  z.object({ field: z.literal('status'), value: taskStatusSchema }),
+  z.object({ field: z.literal('priority'), value: taskPrioritySchema }),
+  z.object({ field: z.literal('dueDate'), value: dueDateSchema }),
+  z.object({ field: z.literal('groupId'), value: groupIdSchema }),
+  z.object({ field: z.literal('tagIds'), value: tagIdsSchema }),
+  z.object({ field: z.literal('notes'), value: notesSchema }),
+  z.object({ field: z.literal('colorHex'), value: colorHexSchema }),
+])
+
+async function assertResponse(res: Response, action: string): Promise<void> {
+  if (!res.ok) {
+    throw new Error(`Failed to ${action}`)
+  }
+}
+
+function revalidateTaskTags(taskId: string): void {
+  revalidateTag(`task-${taskId}`, 'max')
+  revalidateTag('tasks', 'max')
+}
+
 export async function updateTaskStatus(taskId: string, rawData: unknown): Promise<void> {
+  const parsedTaskId = taskIdSchema.safeParse(taskId)
+  if (!parsedTaskId.success) {
+    throw new Error('Invalid task id')
+  }
+
   const parsed = updateStatusSchema.safeParse(rawData)
   if (!parsed.success) {
     throw new Error('Invalid status value')
   }
 
-  const res = await fetch(`${process.env['API_URL']}/tasks/${taskId}`, {
+  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
     method: 'PATCH',
-    body: JSON.stringify(parsed.data),
-    headers: { 'Content-Type': 'application/json' },
+    body: parsed.data,
   })
+  await assertResponse(res, 'update task status')
+  revalidateTaskTags(parsedTaskId.data)
+}
 
-  if (!res.ok) {
-    throw new Error('Failed to update task status')
+export async function createTask(rawData: unknown): Promise<void> {
+  const parsed = createTaskSchema.safeParse(rawData)
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task data')
   }
 
-  revalidateTag(`task-${taskId}`, 'max')
+  const payload = {
+    title: parsed.data.title,
+    status: parsed.data.status as TaskStatus,
+    priority: parsed.data.priority as TaskPriority,
+    dueDate: parsed.data.dueDate ?? null,
+    groupId: parsed.data.groupId ?? null,
+    tagIds: parsed.data.tagIds ?? [],
+    notes: parsed.data.notes ?? null,
+    ...(parsed.data.colorHex !== undefined ? { colorHex: parsed.data.colorHex } : {}),
+  }
+
+  const res = await backendFetch('/tasks', {
+    method: 'POST',
+    body: payload,
+  })
+  await assertResponse(res, 'create task')
+
   revalidateTag('tasks', 'max')
 }
 
-export async function createTask(_rawData: unknown): Promise<void> {
-  void _rawData
-  throw new Error('createTask is not implemented')
+export async function updateTask(taskId: string, rawData: unknown): Promise<void> {
+  const parsedTaskId = taskIdSchema.safeParse(taskId)
+  if (!parsedTaskId.success) {
+    throw new Error('Invalid task id')
+  }
+
+  const parsed = updateTaskSchema.safeParse(rawData)
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task update payload')
+  }
+
+  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+    method: 'PATCH',
+    body: parsed.data,
+  })
+  await assertResponse(res, 'update task')
+  revalidateTaskTags(parsedTaskId.data)
 }
 
-export async function updateTask(_taskId: string, _rawData: unknown): Promise<void> {
-  void _taskId
-  void _rawData
-  throw new Error('updateTask is not implemented')
+export async function updateTaskField(taskId: string, field: string, value: unknown): Promise<void> {
+  const parsedTaskId = taskIdSchema.safeParse(taskId)
+  if (!parsedTaskId.success) {
+    throw new Error('Invalid task id')
+  }
+
+  const parsed = updateTaskFieldSchema.safeParse({ field, value })
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task field update')
+  }
+
+  const payload = {
+    [parsed.data.field]: parsed.data.value,
+  }
+  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+    method: 'PATCH',
+    body: payload,
+  })
+  await assertResponse(res, `update task ${parsed.data.field}`)
+  revalidateTaskTags(parsedTaskId.data)
 }
 
-export async function softDeleteTask(_taskId: string): Promise<void> {
-  void _taskId
-  throw new Error('softDeleteTask is not implemented')
+export async function softDeleteTask(taskId: string): Promise<void> {
+  const parsedTaskId = taskIdSchema.safeParse(taskId)
+  if (!parsedTaskId.success) {
+    throw new Error('Invalid task id')
+  }
+
+  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+    method: 'DELETE',
+  })
+  await assertResponse(res, 'soft delete task')
+  revalidateTaskTags(parsedTaskId.data)
 }

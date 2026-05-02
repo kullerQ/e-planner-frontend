@@ -1,6 +1,7 @@
 'use server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { backendFetch } from '@/lib/api/server'
 import { messages } from '@/lib/messages'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import { loginSchema, registerSchema } from '@/lib/validation'
@@ -30,10 +31,10 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
 
   let res: Response
   try {
-    res = await fetch(`${process.env['API_URL']}/auth/login`, {
+    res = await backendFetch('/auth/login', {
+      auth: false,
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(parsed.data),
+      body: parsed.data,
     })
   } catch {
     return { success: false, error: messages.offline.actionUnavailable }
@@ -77,14 +78,14 @@ export async function registerUser(rawData: unknown): Promise<AuthActionResult> 
 
   let res: Response
   try {
-    res = await fetch(`${process.env['API_URL']}/auth/register`, {
+    res = await backendFetch('/auth/register', {
+      auth: false,
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         name: parsed.data.name,
         email: parsed.data.email,
         password: parsed.data.password,
-      }),
+      },
     })
   } catch {
     return { success: false, error: messages.offline.actionUnavailable }

@@ -1,14 +1,12 @@
 'use client'
 
-import { Fragment, useOptimistic, useState, useTransition } from 'react'
+import { Fragment, useEffect, useState, useTransition } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDown01Icon, Calendar03Icon } from '@hugeicons/core-free-icons'
+import { ArrowDown01Icon, Calendar03Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
 import { updateTaskStatus } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { PRIORITY_TITLE_COLORS } from '@/lib/constants'
 import { cn, formatDueDate, isOverdue, resolveTaskColor } from '@/lib/utils'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
@@ -19,6 +17,7 @@ interface TaskRowProps {
   group: TaskGroup | null
   isHiddenBySearch: boolean
   searchQuery: string
+  onTaskStatusOptimistic?: (taskId: string, status: TaskStatus) => void
 }
 
 const statusOptions: Array<{ value: TaskStatus; label: string }> = [
@@ -52,93 +51,116 @@ function renderHighlightedText(text: string, query: string): React.ReactNode {
   })
 }
 
-export function TaskRow({ task, group, isHiddenBySearch, searchQuery }: TaskRowProps) {
+export function TaskRow({
+  task,
+  group,
+  isHiddenBySearch,
+  searchQuery,
+  onTaskStatusOptimistic,
+}: TaskRowProps) {
   const openTaskSheet = useTaskSheetStore((state) => state.open)
+  const statusOverride = useTaskSheetStore((state) => state.statusOverrides[task.id])
+  const setStatusOverride = useTaskSheetStore((state) => state.setStatusOverride)
+  const clearStatusOverride = useTaskSheetStore((state) => state.clearStatusOverride)
   const isSelecting = useSelectionStore((state) => state.isSelecting)
   const selectedIds = useSelectionStore((state) => state.selectedIds)
   const toggleSelection = useSelectionStore((state) => state.toggleSelection)
-  const enterSelectMode = useSelectionStore((state) => state.enterSelectMode)
 
   const [statusError, setStatusError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const [optimisticStatus, setOptimisticStatus] = useOptimistic(task.status)
+  const displayStatus = statusOverride ?? task.status
   const isSelected = selectedIds.has(task.id)
   const taskColor = resolveTaskColor(task, group)
   const hiddenTagCount = Math.max(0, task.tags.length - 2)
   const isTaskOverdue = isOverdue(task.dueDate)
 
+  useEffect(() => {
+    if (statusOverride === task.status) {
+      clearStatusOverride(task.id)
+    }
+  }, [clearStatusOverride, statusOverride, task.id, task.status])
+
   function handleOpenTask() {
     openTaskSheet(task.id)
   }
 
-  function handleToggleSelection(checked: boolean) {
-    enterSelectMode()
-    const hasTask = selectedIds.has(task.id)
-    if ((checked && !hasTask) || (!checked && hasTask)) {
-      toggleSelection(task.id)
-    }
-  }
-
   function handleStatusChange(nextStatus: TaskStatus) {
-    if (nextStatus === optimisticStatus || isPending) {
+    if (nextStatus === displayStatus || isPending) {
       return
     }
 
     setStatusError(null)
-    const previousStatus = task.status
-    setOptimisticStatus(nextStatus)
+    const previousStatus = displayStatus
 
     startTransition(async () => {
+      setStatusOverride(task.id, nextStatus)
+      onTaskStatusOptimistic?.(task.id, nextStatus)
+
       try {
         await updateTaskStatus(task.id, { status: nextStatus })
       } catch {
-        setOptimisticStatus(previousStatus)
+        setStatusOverride(task.id, previousStatus)
+        onTaskStatusOptimistic?.(task.id, previousStatus)
         setStatusError('Status update failed. Please try again.')
         toast.error('Failed to update task status')
       }
     })
   }
 
+  function handleToggleCompleted() {
+    const nextStatus: TaskStatus = displayStatus === 'completed' ? 'todo' : 'completed'
+    handleStatusChange(nextStatus)
+  }
+
+  function handleRowClick() {
+    if (isSelecting) {
+      toggleSelection(task.id)
+      return
+    }
+    handleOpenTask()
+  }
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={handleOpenTask}
+      onClick={handleRowClick}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          handleOpenTask()
+          handleRowClick()
         }
       }}
       className={cn(
-        'group min-h-[44px] py-2.5 px-4 border-l-[3px] border-b border-border/40',
+        'group min-h-[44px] py-2.5 px-4 border-l-[3px] border-b border-border/40 rounded-md',
         'flex items-center gap-3 transition-colors',
         'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+        isSelected && 'ring-2 ring-inset ring-ring/80',
         isHiddenBySearch && 'hidden'
       )}
       style={{ borderLeftColor: taskColor }}
     >
-      <div
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          handleToggleCompleted()
+        }}
         className={cn(
-          'flex items-center justify-center transition-opacity',
-          isSelected || isSelecting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          'inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+            displayStatus === 'completed' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
         )}
-        onClick={(event) => event.stopPropagation()}
+        aria-label={displayStatus === 'completed' ? 'Mark as to do' : 'Mark as completed'}
       >
-        <Checkbox
-          aria-label={`Select task ${task.title}`}
-          checked={isSelected}
-          onCheckedChange={(checked) => handleToggleSelection(checked === true)}
-          className="size-4"
-        />
-      </div>
+        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />
+      </button>
 
       <div className="min-w-0 flex-1">
         <p
           className={cn(
             'text-sm font-medium truncate',
-            PRIORITY_TITLE_COLORS[task.priority],
-            optimisticStatus === 'completed' && 'text-muted-foreground line-through'
+            displayStatus === 'completed' && 'text-muted-foreground line-through'
           )}
         >
           {renderHighlightedText(task.title, searchQuery)}
@@ -176,10 +198,16 @@ export function TaskRow({ task, group, isHiddenBySearch, searchQuery }: TaskRowP
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className={cn(
+                'group/status min-h-11 min-w-11 inline-flex items-center justify-center rounded-sm cursor-pointer',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+              )}
               aria-label="Update task status"
             >
-              <StatusBadge status={optimisticStatus} />
+              <StatusBadge
+                status={displayStatus}
+                className="transition-all duration-150 group-hover/status:brightness-125 group-hover/status:shadow-sm group-hover/status:bg-accent/70"
+              />
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-52 p-2">
@@ -192,18 +220,18 @@ export function TaskRow({ task, group, isHiddenBySearch, searchQuery }: TaskRowP
                     'w-full flex items-center justify-between rounded-sm px-2 py-1.5 text-sm text-left',
                     'hover:bg-accent hover:text-accent-foreground',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                    optimisticStatus === option.value && 'bg-accent text-accent-foreground'
+                    displayStatus === option.value && 'bg-accent text-accent-foreground'
                   )}
                   onClick={() => handleStatusChange(option.value)}
                 >
                   <span>{option.label}</span>
-                  {optimisticStatus === option.value ? <HugeiconsIcon icon={ArrowDown01Icon} size={14} /> : null}
+                  {displayStatus === option.value ? <HugeiconsIcon icon={ArrowDown01Icon} size={14} /> : null}
                 </button>
               ))}
             </div>
           </PopoverContent>
         </Popover>
-        {statusError !== null ? <p className="mt-1 text-xs text-destructive">{statusError}</p> : null}
+        {statusError !== null ? <p className="text-xs text-destructive">{statusError}</p> : null}
       </div>
     </div>
   )

@@ -17,10 +17,12 @@ interface FilterStore {
   groupBy: GroupByDimension
   sortBy: SortByDimension
   sortDirection: SortDirection
+  hasHydrated: boolean
   setSearchQuery: (q: string) => void
   setGroupBy: (g: GroupByDimension) => void
   setSortBy: (s: SortByDimension) => void
   toggleSortDirection: () => void
+  setHasHydrated: (value: boolean) => void
   reset: () => void
 }
 
@@ -29,6 +31,7 @@ const DEFAULT_STATE = {
   groupBy: 'none' as GroupByDimension,
   sortBy: 'date' as SortByDimension,
   sortDirection: 'asc' as SortDirection,
+  hasHydrated: false,
 }
 
 export const useFilterStore = create<FilterStore>()(
@@ -40,8 +43,20 @@ export const useFilterStore = create<FilterStore>()(
       setSortBy: (s) => set({ sortBy: s }),
       toggleSortDirection: () =>
         set((state) => ({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' })),
+      setHasHydrated: (value) => set({ hasHydrated: value }),
       reset: () => set(DEFAULT_STATE),
     }),
-    { name: 'e-planner-filter-state' }
+    {
+      name: 'e-planner-filter-state',
+      partialize: (state) => ({
+        searchQuery: state.searchQuery,
+        groupBy: state.groupBy,
+        sortBy: state.sortBy,
+        sortDirection: state.sortDirection,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
+    }
   )
 )

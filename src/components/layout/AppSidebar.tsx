@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSidebarStore } from '@/hooks/useSidebarState'
+import { useIsMounted } from '@/hooks/useIsMounted'
 import { SidebarNav, type SidebarNavItemConfig } from './SidebarNav'
 import { UserZone } from './UserZone'
 
@@ -48,6 +49,7 @@ const RECYCLE_ITEM: SidebarNavItemConfig[] = [
 ]
 
 export function AppSidebar() {
+  const isMounted = useIsMounted()
   const collapsed = useSidebarStore((state) => state.collapsed)
   const toggle = useSidebarStore((state) => state.toggle)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -64,20 +66,20 @@ export function AppSidebar() {
     }
   }, [])
 
-  const effectiveCollapsed = collapsed && isDesktop
+  const effectiveCollapsed = isMounted && collapsed && isDesktop
 
   const toggleButton = (
     <button
       type="button"
       onClick={() => {
-        if (!isDesktop) {
+        if (!isMounted || !isDesktop) {
           return
         }
         toggle()
       }}
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
       aria-label={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      disabled={!isDesktop}
+      aria-disabled={!isMounted || !isDesktop}
     >
       <HugeiconsIcon icon={SidebarLeft01Icon} strokeWidth={1.5} size={16} />
     </button>

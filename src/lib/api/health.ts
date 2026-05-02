@@ -49,8 +49,7 @@ function isUnavailableHealthEndpoint(status: number): boolean {
 
 async function checkHealthEndpoint(baseUrl: string): Promise<boolean | 'fallback'> {
   const response = await fetchWithTimeout(`${baseUrl}/health`)
-  console.log('health response', response.status, response.ok)
-  
+
   if (response.status >= 500) {
     return false
   }

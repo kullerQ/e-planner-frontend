@@ -91,3 +91,12 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+.task-notes-editor .cm-editor {
+  background: transparent;
+  height: auto;
+}
+
+.task-notes-editor .cm-editor.cm-focused {
+  outline: none;
+}

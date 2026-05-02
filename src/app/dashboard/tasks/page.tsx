@@ -1,29 +1,13 @@
 import { TaskListClient } from './TaskListClient'
+import { backendFetchJson } from '@/lib/api/server'
 import { messages } from '@/lib/messages'
 import type { Task, TaskGroup } from '@/types'
 
-async function fetchJson<T>(url: string, tag: string): Promise<T> {
-  const response = await fetch(url, {
-    next: { tags: [tag] },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${tag}`)
-  }
-
-  return response.json() as Promise<T>
-}
-
 export default async function TasksPage() {
   try {
-    const apiUrl = process.env['API_URL']
-    if (!apiUrl) {
-      throw new Error('API_URL is not configured')
-    }
-
     const [tasks, groups] = await Promise.all([
-      fetchJson<Task[]>(`${apiUrl}/tasks`, 'tasks'),
-      fetchJson<TaskGroup[]>(`${apiUrl}/groups`, 'groups'),
+      backendFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
+      backendFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
     ])
 
     return <TaskListClient tasks={tasks} groups={groups} />

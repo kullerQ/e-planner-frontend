@@ -5,12 +5,14 @@ export const GROUP_COLOR_PALETTE: string[] = [
   '#34d399', '#facc15', '#f87171', '#38bdf8', '#c084fc',
 ]
 
-export const PRIORITY_TITLE_COLORS: Record<TaskPriority, string> = {
-  critical: 'text-red-500',
-  high:     'text-orange-400',
-  medium:   'text-foreground',
-  low:      'text-muted-foreground',
-  none:     'text-foreground',
+// Priority UI is intentionally disabled for now.
+// Keep this stub so the feature can be restored quickly.
+export const PRIORITY_UI_STUB: Record<TaskPriority, null> = {
+  critical: null,
+  high: null,
+  medium: null,
+  low: null,
+  none: null,
 }
 
 export const DEFAULT_WIDGET_LAYOUT: WidgetPlacement[] = [
