@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { BulkSelectionPanel } from '@/components/tasks/BulkSelectionPanel'
 import { TaskRow } from '@/components/tasks/TaskRow'
 import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet'
 import { filterTasks, groupTasks, sortTasks } from '@/lib/taskFilters'
@@ -39,11 +40,12 @@ import {
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useDebounce } from '@/hooks/useDebounce'
-import type { Task, TaskGroup, TaskStatus } from '@/types'
+import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
 
 interface TaskListClientProps {
   tasks: Task[]
   groups: TaskGroup[]
+  tags: Tag[]
 }
 
 const groupByOptions = [
@@ -74,7 +76,11 @@ function parseGroupKey(key: string): { dimension: string; value: string } {
   }
 }
 
-function getGroupLabel(key: string, tasks: Task[], groupsById: Map<string, TaskGroup>): string {
+function getGroupLabel(
+  key: string,
+  groupsById: Map<string, TaskGroup>,
+  tagsById: Map<string, Tag>
+): string {
   const parsed = parseGroupKey(key)
   if (parsed.dimension === 'folder') {
     if (parsed.value === 'none') {
@@ -87,9 +93,7 @@ function getGroupLabel(key: string, tasks: Task[], groupsById: Map<string, TaskG
     if (parsed.value === 'none') {
       return 'No tag'
     }
-    const firstTask = tasks[0]
-    const foundTag = firstTask?.tags.find((tag) => tag.id === parsed.value)
-    return foundTag?.name ?? 'No tag'
+    return tagsById.get(parsed.value)?.name ?? 'No tag'
   }
 
   if (parsed.dimension === 'priority') {
@@ -118,7 +122,7 @@ function getGroupSwatchColor(key: string, groupsById: Map<string, TaskGroup>): s
   return groupsById.get(parsed.value)?.colorHex ?? 'hsl(var(--muted-foreground))'
 }
 
-export function TaskListClient({ tasks, groups }: TaskListClientProps) {
+export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const tasksMessages = messages.dashboard.tasks
   const searchQuery = useFilterStore((state) => state.searchQuery)
   const groupBy = useFilterStore((state) => state.groupBy)
@@ -130,6 +134,7 @@ export function TaskListClient({ tasks, groups }: TaskListClientProps) {
   const setSortBy = useFilterStore((state) => state.setSortBy)
   const toggleSortDirection = useFilterStore((state) => state.toggleSortDirection)
   const openTaskSheet = useTaskSheetStore((state) => state.open)
+  const closeTaskSheet = useTaskSheetStore((state) => state.close)
   const isSelecting = useSelectionStore((state) => state.isSelecting)
   const selectedIds = useSelectionStore((state) => state.selectedIds)
   const enterSelectMode = useSelectionStore((state) => state.enterSelectMode)
@@ -140,6 +145,30 @@ export function TaskListClient({ tasks, groups }: TaskListClientProps) {
   useEffect(() => {
     setOptimisticTasks(tasks)
   }, [tasks])
+
+  useEffect(() => {
+    if (!isSelecting) {
+      return
+    }
+
+    closeTaskSheet()
+  }, [closeTaskSheet, isSelecting])
+
+  useEffect(() => {
+    if (!isSelecting) {
+      return
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+      exitSelectMode()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [exitSelectMode, isSelecting])
 
   const effectiveSearchQuery = searchQuery
   const effectiveGroupBy: GroupByDimension =
@@ -152,6 +181,40 @@ export function TaskListClient({ tasks, groups }: TaskListClientProps) {
   function handleTaskStatusOptimistic(taskId: string, status: TaskStatus) {
     setOptimisticTasks((currentTasks) =>
       currentTasks.map((task) => (task.id === taskId ? { ...task, status } : task))
+    )
+  }
+
+  function handleBulkDeleted(taskIds: string[]) {
+    const deletedIdSet = new Set(taskIds)
+    setOptimisticTasks((currentTasks) => currentTasks.filter((task) => !deletedIdSet.has(task.id)))
+  }
+
+  function handleBulkTagsAdded(taskIds: string[], tagIds: string[]) {
+    const updatedTaskIdSet = new Set(taskIds)
+    const tagsToAdd = tagIds
+      .map((tagId) => tagsById.get(tagId))
+      .filter((tag): tag is Tag => tag !== undefined)
+
+    if (tagsToAdd.length === 0) {
+      return
+    }
+
+    setOptimisticTasks((currentTasks) =>
+      currentTasks.map((task) => {
+        if (!updatedTaskIdSet.has(task.id)) {
+          return task
+        }
+
+        const mergedTagsById = new Map(task.tags.map((tag) => [tag.id, tag] as const))
+        for (const tag of tagsToAdd) {
+          mergedTagsById.set(tag.id, tag)
+        }
+
+        return {
+          ...task,
+          tags: Array.from(mergedTagsById.values()),
+        }
+      })
     )
   }
 
@@ -171,6 +234,9 @@ export function TaskListClient({ tasks, groups }: TaskListClientProps) {
   const groupsById = useMemo(() => {
     return new Map(groups.map((group) => [group.id, group] as const))
   }, [groups])
+  const tagsById = useMemo(() => {
+    return new Map(tags.map((tag) => [tag.id, tag] as const))
+  }, [tags])
 
   function toggleGroupCollapse(groupKey: string) {
     setCollapsedGroups((current) => ({
@@ -184,65 +250,66 @@ export function TaskListClient({ tasks, groups }: TaskListClientProps) {
 
   return (
     <>
-      <main className="p-6">
-        <header className="flex items-center justify-between gap-4 pb-5 border-b border-border/50 mb-6">
-          <h1 className="text-2xl font-semibold text-foreground">{tasksMessages.title}</h1>
-          <Button type="button" onClick={() => openTaskSheet(null)}>
-            [+ New Task]
-          </Button>
-        </header>
+      <div className="flex min-h-full">
+        <main className="min-w-0 flex-1 p-6">
+          <header className="flex items-center justify-between gap-4 pb-5 border-b border-border/50 mb-6">
+            <h1 className="text-2xl font-semibold text-foreground">{tasksMessages.title}</h1>
+            <Button type="button" onClick={() => openTaskSheet(null)}>
+              [+ New Task]
+            </Button>
+          </header>
 
-      <section className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative w-full min-w-[220px] max-w-[360px]">
-          <HugeiconsIcon
-            icon={Search01Icon}
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            placeholder={tasksMessages.searchPlaceholder}
-            value={effectiveSearchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            className="pl-9 pr-9"
-          />
-          <button
-            type="button"
-            aria-label="Clear search"
-            onClick={() => setSearchQuery('')}
-            className={cn(
-              'absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-opacity',
-              effectiveSearchQuery.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            )}
-          >
-            <HugeiconsIcon icon={Cancel01Icon} size={12} />
-          </button>
-        </div>
+          <section className="flex flex-wrap items-center gap-3 mb-5">
+            <div className="relative w-full min-w-[220px] max-w-[360px]">
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                placeholder={tasksMessages.searchPlaceholder}
+                value={effectiveSearchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-9 pr-9"
+              />
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setSearchQuery('')}
+                className={cn(
+                  'absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-opacity',
+                  effectiveSearchQuery.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                )}
+              >
+                <HugeiconsIcon icon={Cancel01Icon} size={12} />
+              </button>
+            </div>
 
-        <Select
-          value={effectiveGroupBy}
-          onValueChange={(value) => setGroupBy(value as GroupByDimension)}
-        >
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Group by">
-              <span className="inline-flex items-center gap-2">
-                {selectedGroupByOption ? (
-                  <HugeiconsIcon icon={selectedGroupByOption.icon} size={14} className="text-muted-foreground" />
-                ) : null}
-                <span>{selectedGroupByOption?.label ?? 'Group by'}</span>
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {groupByOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <span className="inline-flex items-center gap-2">
-                  <HugeiconsIcon icon={option.icon} size={14} className="text-muted-foreground" />
-                  <span>{option.label}</span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <Select
+              value={effectiveGroupBy}
+              onValueChange={(value) => setGroupBy(value as GroupByDimension)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Group by">
+                  <span className="inline-flex items-center gap-2">
+                    {selectedGroupByOption ? (
+                      <HugeiconsIcon icon={selectedGroupByOption.icon} size={14} className="text-muted-foreground" />
+                    ) : null}
+                    <span>{selectedGroupByOption?.label ?? 'Group by'}</span>
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {groupByOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span className="inline-flex items-center gap-2">
+                      <HugeiconsIcon icon={option.icon} size={14} className="text-muted-foreground" />
+                      <span>{option.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
         <Popover>
           <PopoverTrigger asChild>
@@ -327,118 +394,127 @@ export function TaskListClient({ tasks, groups }: TaskListClientProps) {
           </PopoverContent>
         </Popover>
 
-        <Button
-          type="button"
-          variant={isSelecting ? 'default' : 'outline'}
-          onClick={() => {
-            if (isSelecting) {
-              exitSelectMode()
-              return
-            }
-            enterSelectMode()
-          }}
-          className="min-w-[132px] justify-center"
-        >
-          {isSelecting ? `Done (${selectedIds.size})` : 'Select'}
-        </Button>
-      </section>
+            <Button
+              type="button"
+              variant={isSelecting ? 'default' : 'outline'}
+              onClick={() => {
+                if (isSelecting) {
+                  exitSelectMode()
+                  return
+                }
+                enterSelectMode()
+              }}
+              className="min-w-[132px] justify-center"
+            >
+              {isSelecting ? `Done (${selectedIds.size})` : 'Select'}
+            </Button>
+          </section>
 
-        <section className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
-          {!hasHydrated ? (
-            <div className="p-6 text-sm text-muted-foreground">Loading tasks...</div>
-          ) : null}
-          {hasHydrated && groupedTasks.size === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">{tasksMessages.empty}</div>
-          ) : null}
-          {hasHydrated ? (
-            Array.from(groupedTasks.entries()).map(([groupKey, groupedTaskList]) => {
-              const parsedGroupKey = parseGroupKey(groupKey)
-              const isCollapsed = collapsedGroups[groupKey] === true
-              const visibleCount = groupedTaskList.reduce((count, task) => {
-                return count + (debouncedQuery.length === 0 || matchedTaskIds.has(task.id) ? 1 : 0)
-              }, 0)
-              const shouldRenderHeader = effectiveGroupBy !== 'none'
-              const groupLabel = getGroupLabel(groupKey, groupedTaskList, groupsById)
-              const groupColor = getGroupSwatchColor(groupKey, groupsById)
-              const shouldRenderFolderActions =
-                parsedGroupKey.dimension === 'folder' &&
-                parsedGroupKey.value !== 'none' &&
-                groupsById.has(parsedGroupKey.value)
+          <section className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
+            {!hasHydrated ? (
+              <div className="p-6 text-sm text-muted-foreground">Loading tasks...</div>
+            ) : null}
+            {hasHydrated && groupedTasks.size === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground">{tasksMessages.empty}</div>
+            ) : null}
+            {hasHydrated ? (
+              Array.from(groupedTasks.entries()).map(([groupKey, groupedTaskList]) => {
+                const parsedGroupKey = parseGroupKey(groupKey)
+                const isCollapsed = collapsedGroups[groupKey] === true
+                const visibleCount = groupedTaskList.reduce((count, task) => {
+                  return count + (debouncedQuery.length === 0 || matchedTaskIds.has(task.id) ? 1 : 0)
+                }, 0)
+                const shouldRenderHeader = effectiveGroupBy !== 'none'
+                const groupLabel = getGroupLabel(groupKey, groupsById, tagsById)
+                const groupColor = getGroupSwatchColor(groupKey, groupsById)
+                const shouldRenderFolderActions =
+                  parsedGroupKey.dimension === 'folder' &&
+                  parsedGroupKey.value !== 'none' &&
+                  groupsById.has(parsedGroupKey.value)
 
-              return (
-                <div key={groupKey}>
-                  {shouldRenderHeader ? (
-                    <div className="sticky top-0 z-10 bg-muted/30 border-b border-border/50 px-4 py-2 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => toggleGroupCollapse(groupKey)}
-                        className="flex items-center gap-2 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm px-1"
-                        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} group ${groupLabel}`}
-                      >
-                        <HugeiconsIcon
-                          icon={ArrowDown01Icon}
-                          size={14}
-                          className={cn('transition-transform', isCollapsed && '-rotate-90')}
+                return (
+                  <div key={groupKey}>
+                    {shouldRenderHeader ? (
+                      <div className="sticky top-0 z-10 bg-muted/30 border-b border-border/50 px-4 py-2 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => toggleGroupCollapse(groupKey)}
+                          className="flex items-center gap-2 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm px-1"
+                          aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} group ${groupLabel}`}
+                        >
+                          <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            size={14}
+                            className={cn('transition-transform', isCollapsed && '-rotate-90')}
+                          />
+                          <span className="size-3 rounded-sm" style={{ backgroundColor: groupColor }} />
+                          <span className="text-sm font-semibold text-foreground capitalize">{groupLabel}</span>
+                          <span className="text-xs text-muted-foreground">({visibleCount})</span>
+                        </button>
+                        {shouldRenderFolderActions ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="min-h-11 px-2 text-sm text-muted-foreground rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                aria-label={`Group actions for ${groupLabel}`}
+                              >
+                                ...
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-44 p-1">
+                              <button
+                                type="button"
+                                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                              >
+                                Rename
+                              </button>
+                              <button
+                                type="button"
+                                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                              >
+                                Change Color
+                              </button>
+                              <button
+                                type="button"
+                                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                              >
+                                Delete
+                              </button>
+                            </PopoverContent>
+                          </Popover>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div className={cn(isCollapsed && 'hidden')}>
+                      {groupedTaskList.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          group={task.groupId !== null ? (groupsById.get(task.groupId) ?? null) : null}
+                          isHiddenBySearch={debouncedQuery.length > 0 && !matchedTaskIds.has(task.id)}
+                          searchQuery={debouncedQuery}
+                          onTaskStatusOptimistic={handleTaskStatusOptimistic}
                         />
-                        <span className="size-3 rounded-sm" style={{ backgroundColor: groupColor }} />
-                        <span className="text-sm font-semibold text-foreground capitalize">{groupLabel}</span>
-                        <span className="text-xs text-muted-foreground">({visibleCount})</span>
-                      </button>
-                      {shouldRenderFolderActions ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className="min-h-11 px-2 text-sm text-muted-foreground rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                              aria-label={`Group actions for ${groupLabel}`}
-                            >
-                              ...
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-44 p-1">
-                            <button
-                              type="button"
-                              className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                            >
-                              Rename
-                            </button>
-                            <button
-                              type="button"
-                              className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                            >
-                              Change Color
-                            </button>
-                            <button
-                              type="button"
-                              className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                            >
-                              Delete
-                            </button>
-                          </PopoverContent>
-                        </Popover>
-                      ) : null}
+                      ))}
                     </div>
-                  ) : null}
-
-                  <div className={cn(isCollapsed && 'hidden')}>
-                    {groupedTaskList.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        group={task.groupId !== null ? (groupsById.get(task.groupId) ?? null) : null}
-                        isHiddenBySearch={debouncedQuery.length > 0 && !matchedTaskIds.has(task.id)}
-                        searchQuery={debouncedQuery}
-                        onTaskStatusOptimistic={handleTaskStatusOptimistic}
-                      />
-                    ))}
                   </div>
-                </div>
-              )
-            })
-          ) : null}
-        </section>
-      </main>
-      <TaskDetailSheet tasks={optimisticTasks} groups={groups} />
+                )
+              })
+            ) : null}
+          </section>
+        </main>
+        {isSelecting ? (
+          <BulkSelectionPanel
+            groups={groups}
+            tags={tags}
+            onBulkDeleted={handleBulkDeleted}
+            onBulkTagsAdded={handleBulkTagsAdded}
+          />
+        ) : null}
+      </div>
+      {!isSelecting ? <TaskDetailSheet tasks={optimisticTasks} groups={groups} tags={tags} /> : null}
     </>
   )
 }

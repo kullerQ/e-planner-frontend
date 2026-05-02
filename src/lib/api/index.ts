@@ -14,3 +14,5 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
   return res.json() as Promise<T>
 }
+
+export { createTag, deleteTag, getTags, renameTag } from './tags'

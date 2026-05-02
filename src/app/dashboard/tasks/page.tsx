@@ -1,16 +1,19 @@
 import { TaskListClient } from './TaskListClient'
 import { backendFetchJson } from '@/lib/api/server'
 import { messages } from '@/lib/messages'
-import type { Task, TaskGroup } from '@/types'
+import type { Tag, Task, TaskGroup } from '@/types'
 
 export default async function TasksPage() {
+  let tasks: Task[]
+  let groups: TaskGroup[]
+  let tags: Tag[]
+
   try {
-    const [tasks, groups] = await Promise.all([
+    ;[tasks, groups, tags] = await Promise.all([
       backendFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
       backendFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
+      backendFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
     ])
-
-    return <TaskListClient tasks={tasks} groups={groups} />
   } catch {
     return (
       <main className="p-6">
@@ -21,4 +24,6 @@ export default async function TasksPage() {
       </main>
     )
   }
+
+  return <TaskListClient tasks={tasks} groups={groups} tags={tags} />
 }

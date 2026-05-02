@@ -3,8 +3,16 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDown01Icon, Calendar03Icon, Cancel01Icon, PlusSignIcon } from '@hugeicons/core-free-icons'
+import {
+  ArrowDown01Icon,
+  Calendar03Icon,
+  Cancel01Icon,
+  Delete02Icon,
+  Edit02Icon,
+  PlusSignIcon,
+} from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
+import { createTag, deleteTag, renameTag } from '@/actions/tags'
 import { createTask, softDeleteTask, updateTask } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { TaskNotesMarkdown } from '@/components/tasks/TaskNotesMarkdown'
@@ -35,6 +43,7 @@ import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
 interface TaskDetailSheetProps {
   tasks: Task[]
   groups: TaskGroup[]
+  tags: Tag[]
 }
 
 interface DraftState {
@@ -102,7 +111,11 @@ function draftFromTask(task: Task): DraftState {
   }
 }
 
-export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
+function normalizeTagName(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
   const router = useRouter()
   const isOpen = useTaskSheetStore((state) => state.isOpen)
   const taskId = useTaskSheetStore((state) => state.taskId)
@@ -116,16 +129,6 @@ export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
   const weekStartsOn = useWeekStartsOn()
 
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task] as const)), [tasks])
-  const allTags = useMemo(() => {
-    const tagMap = new Map<string, Tag>()
-    for (const task of tasks) {
-      for (const tag of task.tags) {
-        tagMap.set(tag.id, tag)
-      }
-    }
-    return Array.from(tagMap.values())
-  }, [tasks])
-
   const [loadedTask, setLoadedTask] = useState<Task | null>(null)
 
   useEffect(() => {
@@ -174,8 +177,14 @@ export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
   const [baseline, setBaseline] = useState<DraftState>(() => emptyDraft(initialValues))
   const [fieldError, setFieldError] = useState<Record<string, string>>({})
   const [tagQuery, setTagQuery] = useState('')
+  const [availableTags, setAvailableTags] = useState<Tag[]>(() =>
+    [...tags].sort((left, right) => left.name.localeCompare(right.name))
+  )
+  const [editingTagId, setEditingTagId] = useState<string | null>(null)
+  const [editingTagName, setEditingTagName] = useState('')
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [isTagMutationPending, startTagMutation] = useTransition()
   const titleRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -203,12 +212,23 @@ export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
   const visibleTags = useMemo(() => {
     const normalized = tagQuery.trim().toLowerCase()
     if (normalized.length === 0) {
-      return allTags
+      return availableTags
     }
-    return allTags.filter((tag) => tag.name.toLowerCase().includes(normalized))
-  }, [allTags, tagQuery])
+    return availableTags.filter((tag) => tag.name.toLowerCase().includes(normalized))
+  }, [availableTags, tagQuery])
+
+  const exactTagMatch = useMemo(() => {
+    const normalizedQuery = normalizeTagName(tagQuery)
+    if (normalizedQuery.length === 0) {
+      return undefined
+    }
+    return availableTags.find((tag) => normalizeTagName(tag.name) === normalizedQuery)
+  }, [availableTags, tagQuery])
+
+  const canCreateTagFromQuery = normalizeTagName(tagQuery).length > 0 && exactTagMatch === undefined
 
   const selectedTagSet = useMemo(() => new Set(draft.tagIds), [draft.tagIds])
+  const tagsById = useMemo(() => new Map(availableTags.map((tag) => [tag.id, tag] as const)), [availableTags])
   const hasUnsavedChanges = useMemo(() => {
     return (
       draft.title !== baseline.title ||
@@ -324,6 +344,102 @@ export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
       return
     }
     closeSheet()
+  }
+
+  function toggleTagSelection(tagId: string) {
+    const next = selectedTagSet.has(tagId)
+      ? draft.tagIds.filter((id) => id !== tagId)
+      : [...draft.tagIds, tagId]
+    setDraftField('tagIds', next)
+  }
+
+  function applyCreatedTagLocally(created: Tag) {
+    setAvailableTags((current) => {
+      if (current.some((tag) => tag.id === created.id)) {
+        return current
+      }
+      return [...current, created].sort((left, right) => left.name.localeCompare(right.name))
+    })
+    if (!selectedTagSet.has(created.id)) {
+      setDraftField('tagIds', [...draft.tagIds, created.id])
+    }
+  }
+
+  function handleCreateTagFromQuery() {
+    const nextName = tagQuery.trim()
+    if (nextName.length === 0 || isTagMutationPending) {
+      return
+    }
+
+    startTagMutation(async () => {
+      try {
+        const createdTag = await createTag({ name: nextName })
+        applyCreatedTagLocally(createdTag)
+        setTagQuery('')
+      } catch {
+        toast.error('Tag already exists or could not be created.')
+      }
+    })
+  }
+
+  function beginTagRename(tag: Tag) {
+    setEditingTagId(tag.id)
+    setEditingTagName(tag.name)
+  }
+
+  function handleRenameTag() {
+    if (editingTagId === null || isTagMutationPending) {
+      return
+    }
+
+    const nextName = editingTagName.trim()
+    if (nextName.length === 0) {
+      toast.error('Tag name is required.')
+      return
+    }
+
+    const currentTag = tagsById.get(editingTagId)
+    if (currentTag && normalizeTagName(currentTag.name) === normalizeTagName(nextName)) {
+      setEditingTagId(null)
+      setEditingTagName('')
+      return
+    }
+
+    startTagMutation(async () => {
+      try {
+        const updatedTag = await renameTag({ id: editingTagId, name: nextName })
+        setAvailableTags((current) =>
+          current
+            .map((tag) => (tag.id === updatedTag.id ? updatedTag : tag))
+            .sort((left, right) => left.name.localeCompare(right.name))
+        )
+        setEditingTagId(null)
+        setEditingTagName('')
+      } catch {
+        toast.error('Could not rename tag.')
+      }
+    })
+  }
+
+  function handleDeleteTag(tagId: string) {
+    if (isTagMutationPending) {
+      return
+    }
+
+    startTagMutation(async () => {
+      try {
+        await deleteTag(tagId)
+        setAvailableTags((current) => current.filter((tag) => tag.id !== tagId))
+        if (selectedTagSet.has(tagId)) {
+          setDraftField(
+            'tagIds',
+            draft.tagIds.filter((id) => id !== tagId)
+          )
+        }
+      } catch {
+        toast.error('Could not delete tag.')
+      }
+    })
   }
 
   async function handleSaveAndClose() {
@@ -523,16 +639,23 @@ export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
                 <p className="text-xs text-muted-foreground">Tags</p>
                 <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-border/60 bg-background p-2">
                   {draft.tagIds.map((tagId) => {
-                    const tag = allTags.find((item) => item.id === tagId)
+                    const tag = tagsById.get(tagId)
                     return (
                       <span
                         key={tagId}
-                        className="inline-flex min-h-8 items-center gap-1 rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground"
+                        className={cn(
+                          'inline-flex min-h-9 items-center justify-between gap-2 rounded-sm border border-border/60 px-2.5 py-1 text-xs',
+                          'bg-secondary/70 text-secondary-foreground'
+                        )}
                       >
-                        {tag?.name ?? tagId}
+                        <span className="truncate">{tag?.name ?? tagId}</span>
                         <button
                           type="button"
-                          className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                          className={cn(
+                            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm',
+                            'text-muted-foreground hover:bg-accent hover:text-foreground',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                          )}
                           onClick={() => {
                             const next = draft.tagIds.filter((id) => id !== tagId)
                             setDraftField('tagIds', next)
@@ -559,33 +682,133 @@ export function TaskDetailSheet({ tasks, groups }: TaskDetailSheetProps) {
                       <Input
                         value={tagQuery}
                         onChange={(event) => setTagQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') {
+                            return
+                          }
+                          event.preventDefault()
+                          if (exactTagMatch) {
+                            toggleTagSelection(exactTagMatch.id)
+                            setTagQuery('')
+                            return
+                          }
+                          if (canCreateTagFromQuery) {
+                            handleCreateTagFromQuery()
+                          }
+                        }}
                         placeholder="Search tags"
                       />
                       <div className="max-h-40 space-y-1 overflow-y-auto">
+                        {canCreateTagFromQuery ? (
+                          <button
+                            type="button"
+                            onClick={handleCreateTagFromQuery}
+                            disabled={isTagMutationPending}
+                            className={cn(
+                            'flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-sm',
+                              'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                            )}
+                          >
+                            <span>Create &quot;{tagQuery.trim()}&quot;</span>
+                            <HugeiconsIcon icon={PlusSignIcon} size={14} />
+                          </button>
+                        ) : null}
                         {visibleTags.map((tag) => {
                           const selected = selectedTagSet.has(tag.id)
+                          const isEditing = editingTagId === tag.id
                           return (
-                            <button
-                              key={tag.id}
-                              type="button"
-                              className={cn(
-                                'flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-sm',
-                                'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                                selected && 'bg-accent text-accent-foreground'
+                            <div key={tag.id} className="rounded-sm border border-transparent p-1 hover:border-border/50">
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={editingTagName}
+                                    onChange={(event) => setEditingTagName(event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter') {
+                                        event.preventDefault()
+                                        handleRenameTag()
+                                      }
+                                      if (event.key === 'Escape') {
+                                        setEditingTagId(null)
+                                        setEditingTagName('')
+                                      }
+                                    }}
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="min-h-9"
+                                      onClick={() => {
+                                        setEditingTagId(null)
+                                        setEditingTagName('')
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="min-h-9"
+                                      onClick={handleRenameTag}
+                                      disabled={isTagMutationPending}
+                                    >
+                                      Save
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    'flex min-h-11 items-center gap-1 rounded-sm px-1',
+                                    selected && 'bg-accent text-accent-foreground'
+                                  )}
+                                >
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      'flex min-h-11 flex-1 items-center rounded-sm px-2 text-sm text-left',
+                                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                                    )}
+                                    onClick={() => toggleTagSelection(tag.id)}
+                                  >
+                                    <span>{tag.name}</span>
+                                  </button>
+                                  <div className="ml-auto flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      className={cn(
+                                        'inline-flex h-8 w-8 items-center justify-center rounded-sm',
+                                        'text-muted-foreground hover:bg-background/70 hover:text-foreground',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                                      )}
+                                      aria-label={`Rename tag ${tag.name}`}
+                                      onClick={() => beginTagRename(tag)}
+                                      disabled={isTagMutationPending}
+                                    >
+                                      <HugeiconsIcon icon={Edit02Icon} size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={cn(
+                                        'inline-flex h-8 w-8 items-center justify-center rounded-sm',
+                                        'text-destructive/90 hover:bg-background/70 hover:text-destructive',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                                      )}
+                                      aria-label={`Delete tag ${tag.name}`}
+                                      onClick={() => handleDeleteTag(tag.id)}
+                                      disabled={isTagMutationPending}
+                                    >
+                                      <HugeiconsIcon icon={Delete02Icon} size={14} />
+                                    </button>
+                                  </div>
+                                </div>
                               )}
-                              onClick={() => {
-                                const next = selected
-                                  ? draft.tagIds.filter((id) => id !== tag.id)
-                                  : [...draft.tagIds, tag.id]
-                                setDraftField('tagIds', next)
-                              }}
-                            >
-                              <span>{tag.name}</span>
-                              {selected ? <HugeiconsIcon icon={ArrowDown01Icon} size={14} /> : null}
-                            </button>
+                            </div>
                           )
                         })}
-                        {visibleTags.length === 0 ? (
+                        {visibleTags.length === 0 && !canCreateTagFromQuery ? (
                           <p className="px-2 py-1 text-sm text-muted-foreground">
                             No matching tags yet.
                           </p>

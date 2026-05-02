@@ -62,10 +62,21 @@ function getComparableValue(task: Task, sortBy: SortByDimension): number | strin
     return task.title.toLowerCase()
   }
   if (sortBy === 'tag') {
-    const firstTag = task.tags[0]
-    return firstTag?.name.toLowerCase() ?? ''
+    const normalizedTagNames = task.tags
+      .map((tag) => tag.name.toLowerCase())
+      .sort((left, right) => left.localeCompare(right))
+    return normalizedTagNames.join('|')
   }
   return getTaskComplexity(task)
+}
+
+function pushTaskToBucket(grouped: Map<string, Task[]>, key: string, task: Task) {
+  const bucket = grouped.get(key)
+  if (bucket === undefined) {
+    grouped.set(key, [task])
+    return
+  }
+  bucket.push(task)
 }
 
 export function filterTasks(tasks: Task[], query: string): Task[] {
@@ -91,12 +102,23 @@ export function groupTasks(
   const groupsById = new Map(groups.map((group) => [group.id, group] as const))
 
   for (const task of tasks) {
+    if (dimension === 'tag') {
+      if (task.tags.length === 0) {
+        pushTaskToBucket(grouped, 'tag:none', task)
+        continue
+      }
+
+      const uniqueTagIds = new Set(task.tags.map((tag) => tag.id))
+      for (const tagId of uniqueTagIds) {
+        pushTaskToBucket(grouped, `tag:${tagId}`, task)
+      }
+      continue
+    }
+
     let key = 'none:all'
 
     if (dimension === 'folder') {
       key = `folder:${task.groupId ?? 'none'}`
-    } else if (dimension === 'tag') {
-      key = `tag:${task.tags[0]?.id ?? 'none'}`
     } else if (dimension === 'priority') {
       key = `priority:${task.priority}`
     } else if (dimension === 'complexity') {
@@ -114,12 +136,7 @@ export function groupTasks(
       }
     }
 
-    const bucket = grouped.get(key)
-    if (bucket === undefined) {
-      grouped.set(key, [task])
-    } else {
-      bucket.push(task)
-    }
+    pushTaskToBucket(grouped, key, task)
   }
 
   return grouped

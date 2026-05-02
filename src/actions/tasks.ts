@@ -21,6 +21,22 @@ const dueDateSchema = z.string().datetime().nullable()
 const groupIdSchema = z.string().min(1).nullable()
 const tagIdsSchema = z.array(tagNameSchema.or(z.string().min(1))).max(50)
 const notesSchema = z.string().max(50_000).nullable()
+const bulkTaskIdsSchema = z.array(taskIdSchema).min(1, 'At least one task id is required')
+const bulkGroupSchema = z.object({
+  taskIds: bulkTaskIdsSchema,
+  groupId: groupIdSchema,
+})
+const bulkPrioritySchema = z.object({
+  taskIds: bulkTaskIdsSchema,
+  priority: taskPrioritySchema,
+})
+const bulkTagsSchema = z.object({
+  taskIds: bulkTaskIdsSchema,
+  tagIds: z.array(z.string().min(1)).max(50),
+})
+const bulkDeleteSchema = z.object({
+  taskIds: bulkTaskIdsSchema,
+})
 
 const createTaskSchema = z.object({
   title: taskTitleSchema,
@@ -163,4 +179,60 @@ export async function softDeleteTask(taskId: string): Promise<void> {
   })
   await assertResponse(res, 'soft delete task')
   revalidateTaskTags(parsedTaskId.data)
+}
+
+export async function bulkMoveToGroup(taskIds: string[], groupId: string | null): Promise<void> {
+  const parsed = bulkGroupSchema.safeParse({ taskIds, groupId })
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk move payload')
+  }
+
+  const res = await backendFetch('/tasks/bulk/group', {
+    method: 'PATCH',
+    body: parsed.data,
+  })
+  await assertResponse(res, 'bulk move tasks to group')
+  revalidateTag('tasks', 'max')
+}
+
+export async function bulkSetPriority(taskIds: string[], priority: TaskPriority): Promise<void> {
+  const parsed = bulkPrioritySchema.safeParse({ taskIds, priority })
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk priority payload')
+  }
+
+  const res = await backendFetch('/tasks/bulk/priority', {
+    method: 'PATCH',
+    body: parsed.data,
+  })
+  await assertResponse(res, 'bulk set task priority')
+  revalidateTag('tasks', 'max')
+}
+
+export async function bulkAddTags(taskIds: string[], tagIds: string[]): Promise<void> {
+  const parsed = bulkTagsSchema.safeParse({ taskIds, tagIds })
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk tags payload')
+  }
+
+  const res = await backendFetch('/tasks/bulk/tags', {
+    method: 'POST',
+    body: parsed.data,
+  })
+  await assertResponse(res, 'bulk add tags')
+  revalidateTag('tasks', 'max')
+}
+
+export async function bulkSoftDelete(taskIds: string[]): Promise<void> {
+  const parsed = bulkDeleteSchema.safeParse({ taskIds })
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk delete payload')
+  }
+
+  const res = await backendFetch('/tasks/bulk/delete', {
+    method: 'POST',
+    body: parsed.data,
+  })
+  await assertResponse(res, 'bulk soft delete tasks')
+  revalidateTag('tasks', 'max')
 }
