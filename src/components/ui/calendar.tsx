@@ -41,27 +41,25 @@ function Calendar({
       classNames={{
         root: cn("w-fit text-foreground", defaultClassNames.root),
         months: cn(
-          "flex flex-col gap-4 md:flex-row",
+          "relative flex flex-col gap-4 md:flex-row",
           defaultClassNames.months
         ),
-        month: cn("flex w-full flex-col gap-3", defaultClassNames.month),
-        nav: cn(
-          "flex items-center justify-between gap-1 px-1",
-          defaultClassNames.nav
+        month: cn(
+          "flex w-full flex-col gap-3",
+          defaultClassNames.month
         ),
+        month_caption: cn(
+          "flex h-8 items-center justify-center",
+          defaultClassNames.month_caption
+        ),
+        nav: "absolute inset-x-2 top-0 flex h-8 items-center justify-between",
         button_previous: cn(
           buttonVariants({ variant: buttonVariant, size: "icon" }),
-          "h-8 w-8 cursor-pointer aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
-          defaultClassNames.button_previous
+          "size-7 cursor-pointer rounded-md text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-40 [&_svg]:size-4"
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant, size: "icon" }),
-          "h-8 w-8 cursor-pointer aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
-          defaultClassNames.button_next
-        ),
-        month_caption: cn(
-          "flex h-8 flex-1 items-center justify-center",
-          defaultClassNames.month_caption
+          "size-7 cursor-pointer rounded-md text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-40 [&_svg]:size-4"
         ),
         dropdowns: cn(
           "flex h-8 items-center justify-center gap-1.5 text-sm font-medium",
@@ -110,10 +108,7 @@ function Calendar({
           defaultClassNames.range_middle
         ),
         range_end: cn("rounded-r-md bg-accent", defaultClassNames.range_end),
-        today: cn(
-          "rounded-md text-primary font-semibold",
-          defaultClassNames.today
-        ),
+        today: defaultClassNames.today,
         outside: cn(
           "text-muted-foreground/50 aria-selected:text-muted-foreground",
           defaultClassNames.outside
@@ -197,6 +192,7 @@ function CalendarDayButton({
       ref={ref}
       type="button"
       data-day={day.date.toLocaleDateString()}
+      data-today={modifiers.today}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&
@@ -210,7 +206,9 @@ function CalendarDayButton({
         "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-sm font-normal text-foreground transition-colors",
         "hover:bg-accent hover:text-accent-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[selected-single=true]:hover:bg-primary",
+        "data-[today=true]:text-primary data-[today=true]:font-semibold data-[today=true]:ring-1 data-[today=true]:ring-primary/60 data-[today=true]:ring-inset",
+        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[selected-single=true]:ring-0 data-[selected-single=true]:hover:bg-primary",
+        "data-[today=true]:data-[selected-single=true]:text-primary-foreground data-[today=true]:data-[selected-single=true]:ring-0",
         "data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground",
         "data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground",
         "data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground",

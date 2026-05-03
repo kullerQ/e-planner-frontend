@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TimePicker } from '@/components/ui/time-picker'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -45,6 +46,7 @@ interface TaskDetailSheetProps {
   tasks: Task[]
   groups: TaskGroup[]
   tags: Tag[]
+  onTaskUpdated?: (updatedTask: Task) => void
 }
 
 interface DraftState {
@@ -85,7 +87,34 @@ function formatDueDateLabel(iso: string | null): string {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   }).format(parsed)
+}
+
+function formatTimeInputValue(iso: string | null): string {
+  if (iso === null) {
+    return ''
+  }
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) {
+    return ''
+  }
+  const hours = String(parsed.getHours()).padStart(2, '0')
+  const minutes = String(parsed.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+function combineDateAndTime(date: Date, timeValue: string): string {
+  const next = new Date(date)
+  const match = /^(\d{2}):(\d{2})$/.exec(timeValue)
+  if (match) {
+    next.setHours(Number(match[1]), Number(match[2]), 0, 0)
+  } else {
+    next.setHours(0, 0, 0, 0)
+  }
+  return next.toISOString()
 }
 
 function emptyDraft(initialValues: { groupId?: string; dueDate?: string } | undefined): DraftState {
@@ -116,7 +145,7 @@ function normalizeTagName(value: string): string {
   return value.trim().toLowerCase()
 }
 
-export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
+export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDetailSheetProps) {
   const router = useRouter()
   const isOpen = useTaskSheetStore((state) => state.isOpen)
   const taskId = useTaskSheetStore((state) => state.taskId)
@@ -316,6 +345,22 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
           notes: draft.notes.length > 0 ? draft.notes : null,
         })
         setBaseline({ ...draft, title: parsed.data })
+        // Optimistically update parent with new task data
+        if (onTaskUpdated && sourceTask) {
+          const updatedTags = draft.tagIds
+            .map((id) => availableTags.find((t) => t.id === id))
+            .filter((t): t is Tag => t !== undefined)
+          onTaskUpdated({
+            ...sourceTask,
+            title: parsed.data,
+            status: draft.status,
+            priority: draft.priority,
+            dueDate: draft.dueDate,
+            groupId: draft.groupId,
+            tags: updatedTags,
+            notes: draft.notes.length > 0 ? draft.notes : null,
+          })
+        }
         router.refresh()
       } catch {
         setFieldFailure('submit', messages.tasks.errorSave)
@@ -610,12 +655,35 @@ export function TaskDetailSheet({ tasks, groups, tags }: TaskDetailSheetProps) {
                         mode="single"
                         selected={toDate(draft.dueDate)}
                         onSelect={(nextDate) => {
-                          const iso = nextDate ? nextDate.toISOString() : null
-                          setDraftField('dueDate', iso)
+                          if (!nextDate) {
+                            setDraftField('dueDate', null)
+                            return
+                          }
+                          const existingTime = formatTimeInputValue(draft.dueDate)
+                          setDraftField(
+                            'dueDate',
+                            combineDateAndTime(nextDate, existingTime)
+                          )
                         }}
                         weekStartsOn={weekStartsOn}
                         initialFocus
                       />
+                      <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-2">
+                        <span className="text-xs text-muted-foreground">
+                          {messages.tasks.dueDateTime}
+                        </span>
+                        <TimePicker
+                          aria-label={messages.tasks.dueDateTime}
+                          value={formatTimeInputValue(draft.dueDate)}
+                          onChange={(nextTime) => {
+                            const base = toDate(draft.dueDate) ?? new Date()
+                            setDraftField(
+                              'dueDate',
+                              combineDateAndTime(base, nextTime)
+                            )
+                          }}
+                        />
+                      </div>
                     </PopoverContent>
                   </Popover>
                   {draft.dueDate !== null ? (

@@ -68,7 +68,7 @@ export function RecycleBinClient({ tasks }: RecycleBinClientProps) {
   }
 
   return (
-    <main className="space-y-4 p-6">
+    <main className="space-y-4 p-6 overflow-y-auto h-full">
       <header className="mb-6 flex items-center justify-between gap-4 border-b border-border/50 pb-5">
         <h1 className="text-2xl font-semibold text-foreground">{recycleMessages.title}</h1>
         {sortedTasks.length > 0 ? (

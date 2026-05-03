@@ -12,15 +12,23 @@ export function resolveTaskColor(task: Task, group: TaskGroup | null): string {
   return task.colorHex
 }
 
-// Format ISO date string to human-readable (e.g. "Mar 30")
+// Format ISO date string to human-readable with time (e.g. "Mar 30, 14:30")
 export function formatDueDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 // Returns true if an ISO date string is in the past
 export function isOverdue(iso: string | null): boolean {
   if (iso === null) return false
   return new Date(iso) < new Date()
+}
+
+// Returns true if due date is within the next 24 hours (and not yet overdue)
+export function isDueSoon(iso: string | null): boolean {
+  if (iso === null) return false
+  const due = new Date(iso).getTime()
+  const now = Date.now()
+  return due >= now && due - now <= 24 * 60 * 60 * 1000
 }
 
 export function randomGroupColor(): string {

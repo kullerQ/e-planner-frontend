@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -13,6 +13,7 @@ import { NewFolderBlock } from './NewFolderBlock'
 import { DeleteGroupDialog } from '@/components/groups/DeleteGroupDialog'
 import { reorderGroups, createGroup, deleteGroupAndUngroup } from '@/actions/groups'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
+import { useGroupsStore } from '@/stores/useGroupsStore'
 import { messages } from '@/lib/messages'
 import { cn, randomGroupColor } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -38,6 +39,15 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
   const [groups, setGroups] = useState<(TaskGroup | DraftGroup)[]>(initialGroups)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [draftGroup, setDraftGroup] = useState<DraftGroup | null>(null)
+
+  const storeSetGroups = useGroupsStore((s) => s.setGroups)
+  const storeAddGroup = useGroupsStore((s) => s.addGroup)
+  const storeUpdateGroup = useGroupsStore((s) => s.updateGroup)
+  const storeRemoveGroup = useGroupsStore((s) => s.removeGroup)
+
+  useEffect(() => {
+    storeSetGroups(initialGroups)
+  }, [initialGroups, storeSetGroups])
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -106,6 +116,7 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
       ) as TaskGroup[]
       const next: TaskGroup[] = [newGroup, ...filtered]
       setGroups(next)
+      storeAddGroup(newGroup)
 
       // Reorder to persist the new order
       await reorderGroups(next.map((g) => g.id))
@@ -125,6 +136,7 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
       try {
         await deleteGroupAndUngroup(group.id)
         setGroups((current) => current.filter((g) => g.id !== group.id))
+        storeRemoveGroup(group.id)
         toast.success(messages.dashboard.folders.deletedWithUngroupSuccess)
       } catch (error) {
         const message = error instanceof Error ? error.message : messages.dashboard.folders.deleteError
@@ -142,12 +154,14 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
   function handleGroupDeleted() {
     // Optimistically remove the group from UI
     setGroups((current) => current.filter((g) => g.id !== deleteGroupId))
+    if (deleteGroupId) storeRemoveGroup(deleteGroupId)
   }
 
   function handleOptimisticUpdate(updatedGroup: TaskGroup) {
     setGroups((current) =>
       current.map((g) => (g.id === updatedGroup.id ? updatedGroup : g))
     )
+    storeUpdateGroup(updatedGroup)
   }
 
   function handleTaskMoved(taskId: string, groupId: string | null) {
@@ -177,6 +191,7 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
         }))
 
         setGroups(reorderedGroups)
+        storeSetGroups(reorderedGroups as TaskGroup[])
 
         // Call server action
         try {

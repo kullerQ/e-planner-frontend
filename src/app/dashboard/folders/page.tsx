@@ -20,7 +20,7 @@ export default async function FoldersPage() {
     ])
   } catch {
     return (
-      <main className="p-6">
+      <main className="p-6 overflow-y-auto h-full">
         <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.folders.title}</h1>
         <section className="mt-4 rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
           {isOfflineMock
@@ -35,9 +35,9 @@ export default async function FoldersPage() {
   const sortedGroups = [...groups].sort((a, b) => a.order - b.order)
 
   return (
-    <main className="p-6">
+    <main className="p-6 overflow-y-auto h-full">
       <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.folders.title}</h1>
-      <section className="mt-4">
+      <section className="mt-4 h-[calc(100%-3rem)]">
         <FolderCanvas groups={sortedGroups} tasks={tasks} />
       </section>
       <TaskDetailSheet tasks={tasks} groups={sortedGroups} tags={tags} />

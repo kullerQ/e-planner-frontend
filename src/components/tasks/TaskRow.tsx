@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { updateTaskStatus } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn, formatDueDate, isOverdue } from '@/lib/utils'
+import { cn, formatDueDate, isDueSoon, isOverdue } from '@/lib/utils'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import type { Task, TaskGroup, TaskStatus } from '@/types'
@@ -73,6 +73,7 @@ export function TaskRow({
   const groupAccentColor = group !== null ? group.colorHex : 'var(--border)'
   const hiddenTagCount = Math.max(0, task.tags.length - 2)
   const isTaskOverdue = isOverdue(task.dueDate)
+  const isTaskDueSoon = isDueSoon(task.dueDate)
 
   useEffect(() => {
     if (statusOverride === task.status) {
@@ -186,7 +187,7 @@ export function TaskRow({
       <div
         className={cn(
           'hidden md:flex items-center gap-1 text-xs',
-          isTaskOverdue ? 'text-destructive' : 'text-muted-foreground'
+          isTaskOverdue ? 'text-destructive' : isTaskDueSoon ? 'text-orange-400' : 'text-muted-foreground'
         )}
       >
         <HugeiconsIcon icon={Calendar03Icon} size={12} />

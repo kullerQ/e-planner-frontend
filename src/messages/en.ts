@@ -156,6 +156,7 @@ export const messages = {
     dueDateAction: 'Pick due date',
     dueDateClear: 'Clear due date',
     dueDateEmpty: 'No due date',
+    dueDateTime: 'Time',
     tags: 'Tags',
     tagsAdd: 'Add tag',
     tagsSearch: 'Search tags',

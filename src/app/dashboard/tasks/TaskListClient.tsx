@@ -344,8 +344,8 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
 
   return (
     <>
-      <div className="flex min-h-full">
-        <main className="min-w-0 flex-1 p-6">
+      <div className="flex h-full overflow-hidden">
+        <main className="min-w-0 flex-1 p-6 overflow-y-auto">
           <header className="flex items-center justify-between gap-4 pb-5 border-b border-border/50 mb-6">
             <h1 className="text-2xl font-semibold text-foreground">{tasksMessages.title}</h1>
             <Button type="button" onClick={() => openTaskSheet(null)}>

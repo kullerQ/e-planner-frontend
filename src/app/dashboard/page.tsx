@@ -7,7 +7,7 @@ export default async function DashboardPage() {
   const offlineMessages = messages.dashboard.offline
 
   return (
-    <main className="space-y-6 p-6">
+    <main className="space-y-6 p-6 overflow-y-auto h-full">
       <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.title}</h1>
       <section
         className="grid gap-4"
