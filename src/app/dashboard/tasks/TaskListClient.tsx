@@ -597,12 +597,10 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                                       {messages.dashboard.folders.menu.changeColor}
                                     </button>
                                   </PopoverTrigger>
-                                  <PopoverContent align="end" className="w-auto p-2">
+                                  <PopoverContent align="end" className="w-[240px] p-3">
                                     <ColorPickerPopover
                                       value={currentGroup.colorHex}
-                                      colorInherited={false}
                                       onChange={(colorHex) => handleColorChange(currentGroup.id, colorHex)}
-                                      onResetToGroup={() => {}}
                                     />
                                   </PopoverContent>
                                 </Popover>

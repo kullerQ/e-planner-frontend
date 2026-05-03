@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { updateTaskStatus } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn, formatDueDate, isOverdue, resolveTaskColor } from '@/lib/utils'
+import { cn, formatDueDate, isOverdue } from '@/lib/utils'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import type { Task, TaskGroup, TaskStatus } from '@/types'
@@ -70,7 +70,7 @@ export function TaskRow({
   const [isPending, startTransition] = useTransition()
   const displayStatus = statusOverride ?? task.status
   const isSelected = selectedIds.has(task.id)
-  const taskColor = resolveTaskColor(task, group)
+  const groupAccentColor = group !== null ? group.colorHex : 'var(--border)'
   const hiddenTagCount = Math.max(0, task.tags.length - 2)
   const isTaskOverdue = isOverdue(task.dueDate)
 
@@ -138,7 +138,7 @@ export function TaskRow({
         isSelected && 'ring-2 ring-inset ring-ring/80',
         isHiddenBySearch && 'hidden'
       )}
-      style={{ borderLeftColor: taskColor }}
+      style={{ borderLeftColor: groupAccentColor }}
     >
       <button
         type="button"

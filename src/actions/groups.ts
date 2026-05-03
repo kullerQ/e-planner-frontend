@@ -87,7 +87,7 @@ export async function deleteGroupAndUngroup(groupId: string): Promise<void> {
     throw new Error('Invalid group id')
   }
 
-  const res = await backendFetch(`/groups/${parsedGroupId.data}?disposition=ungroup`, {
+  const res = await backendFetch(`/groups/${parsedGroupId.data}?strategy=ungroup`, {
     method: 'DELETE',
   })
   await assertResponse(res, 'delete group and ungroup tasks')
@@ -102,7 +102,7 @@ export async function deleteGroupWithTasks(groupId: string): Promise<void> {
     throw new Error('Invalid group id')
   }
 
-  const res = await backendFetch(`/groups/${parsedGroupId.data}?disposition=delete`, {
+  const res = await backendFetch(`/groups/${parsedGroupId.data}?strategy=delete_tasks`, {
     method: 'DELETE',
   })
   await assertResponse(res, 'delete group and tasks')
@@ -117,8 +117,8 @@ export async function reorderGroups(orderedIds: string[]): Promise<void> {
     throw new Error('Invalid ordered ids')
   }
 
-  const res = await backendFetch('/groups/reorder', {
-    method: 'POST',
+  const res = await backendFetch('/groups/batch/reorder', {
+    method: 'PATCH',
     body: { orderedIds: parsed.data },
   })
   await assertResponse(res, 'reorder groups')

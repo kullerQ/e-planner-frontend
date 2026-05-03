@@ -84,6 +84,10 @@ export const messages = {
       deleteError: 'Failed to delete folder',
       deletedWithUngroupSuccess: 'Folder deleted, tasks moved to Ungrouped',
       deletedWithTasksSuccess: 'Folder and tasks moved to Recycle Bin',
+      taskAdded: 'Task added to folder',
+      taskAddError: 'Failed to add task to folder',
+      taskRemoved: 'Task removed from folder',
+      taskRemoveError: 'Failed to remove task from folder',
       menu: {
         rename: 'Rename',
         changeColor: 'Change Color',

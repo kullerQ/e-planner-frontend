@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { deleteGroupAndUngroup, deleteGroupWithTasks } from '@/actions/groups'
 import { messages } from '@/lib/messages'
@@ -73,53 +73,53 @@ export function DeleteGroupDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{messages.dashboard.folders.deleteDialog.title.replace('{name}', groupName)}</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{messages.dashboard.folders.deleteDialog.title.replace('{name}', groupName)}</DialogTitle>
+          <DialogDescription>
             {messages.dashboard.folders.deleteDialog.description}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex flex-col gap-2 mt-4">
-          <Button
-            variant="outline"
+        <div className="flex flex-col gap-3 py-4">
+          <button
             onClick={handleUngroup}
             disabled={isPending}
-            className="justify-start h-auto py-3 px-4"
+            className="text-left rounded-lg border border-border bg-card p-4 hover:bg-accent hover:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <div className="flex flex-col items-start text-left">
-              <span className="font-medium">
+            <div className="flex flex-col gap-1">
+              <span className="font-medium text-foreground">
                 {pendingAction === 'ungroup' ? messages.dashboard.folders.deleteDialog.movingTasks : messages.dashboard.folders.deleteDialog.moveToUngrouped}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground leading-relaxed">
                 {messages.dashboard.folders.deleteDialog.moveToUngroupedDescription}
               </span>
             </div>
-          </Button>
+          </button>
 
-          <Button
-            variant="outline"
+          <button
             onClick={handleDeleteWithTasks}
             disabled={isPending}
-            className="justify-start h-auto py-3 px-4 border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            className="text-left rounded-lg border border-destructive/30 bg-card p-4 hover:bg-destructive/10 hover:border-destructive/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <div className="flex flex-col items-start text-left">
+            <div className="flex flex-col gap-1">
               <span className="font-medium text-destructive">
                 {pendingAction === 'delete' ? messages.dashboard.folders.deleteDialog.deleting : messages.dashboard.folders.deleteDialog.deleteAllTasks}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground leading-relaxed">
                 {messages.dashboard.folders.deleteDialog.deleteAllTasksDescription}
               </span>
             </div>
-          </Button>
+          </button>
         </div>
 
-        <div className="flex justify-end mt-4">
-          <AlertDialogCancel disabled={isPending}>{messages.dashboard.folders.deleteDialog.cancel}</AlertDialogCancel>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+        <DialogFooter>
+          <Button variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
+            {messages.dashboard.folders.deleteDialog.cancel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
