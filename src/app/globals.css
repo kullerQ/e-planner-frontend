@@ -5,6 +5,10 @@
 
 :root {
   --radius: 0.5rem;
+  --cal-task-tint: 22%;
+  --cal-task-tint-hover: 42%;
+  --cal-task-neutral: hsl(240 4.8% 95.9%);
+  --cal-task-neutral-hover: hsl(240 5% 90%);
   --background: hsl(0 0% 100%);
   --foreground: hsl(240 10% 3.9%);
   --card: hsl(0 0% 100%);
@@ -15,9 +19,9 @@
   --primary-foreground: hsl(355.7 100% 97.3%);
   --secondary: hsl(240 4.8% 95.9%);
   --secondary-foreground: hsl(240 5.9% 10%);
-  --muted: hsl(240 4.8% 95.9%);
+  --muted: hsl(240 5% 91%);
   --muted-foreground: hsl(240 3.8% 46.1%);
-  --accent: hsl(240 4.8% 95.9%);
+  --accent: hsl(240 5% 91%);
   --accent-foreground: hsl(240 5.9% 10%);
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(0 0% 98%);
@@ -27,6 +31,10 @@
 }
 
 .dark {
+  --cal-task-tint: 12%;
+  --cal-task-tint-hover: 26%;
+  --cal-task-neutral: hsl(0 0% 15%);
+  --cal-task-neutral-hover: hsl(0 0% 20%);
   --background: hsl(20 14.3% 4.1%);
   --foreground: hsl(0 0% 95%);
   --card: hsl(24 9.8% 10%);

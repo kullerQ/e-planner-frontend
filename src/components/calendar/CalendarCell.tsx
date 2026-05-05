@@ -23,12 +23,27 @@ export function CalendarTaskPill({ task, group, onClick }: CalendarTaskPillProps
       }}
       className={cn(
         'w-full text-left rounded-md px-2 py-1 text-xs font-medium truncate cursor-pointer',
-        'border-l-2 transition-opacity hover:opacity-80'
+        'border border-l-4 transition-colors'
       )}
       style={{
-        borderLeftColor: groupColor,
-        backgroundColor: 'hsl(24 9.8% 6%)',
+        borderLeftColor: group ? groupColor : 'var(--muted-foreground)',
+        borderTopColor: 'var(--border)',
+        borderRightColor: 'var(--border)',
+        borderBottomColor: 'var(--border)',
+        backgroundColor: group
+          ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint), var(--card))`
+          : 'var(--cal-task-neutral)',
         color: 'var(--foreground)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = group
+          ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint-hover), var(--card))`
+          : 'var(--cal-task-neutral-hover)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = group
+          ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint), var(--card))`
+          : 'var(--cal-task-neutral)'
       }}
     >
       {task.title}
@@ -75,14 +90,29 @@ export function CalendarTaskBlock({
       }}
       className={cn(
         'absolute left-0 right-1 rounded-md px-2 py-1 text-xs font-medium truncate cursor-pointer pointer-events-auto',
-        'border-l-2 transition-opacity hover:opacity-80 z-10'
+        'border border-l-4 transition-colors z-10'
       )}
       style={{
         top: `calc(${slotTopPercent}% + (${slotHeightPercent}% - ${totalGaps}px) / ${groupSize} * ${stackIndex} + ${stackIndex * GAP_PX}px)`,
         height: `calc((${slotHeightPercent}% - ${totalGaps}px) / ${groupSize})`,
-        borderLeftColor: groupColor,
-        backgroundColor: 'hsl(24 9.8% 6%)',
+        borderLeftColor: group ? groupColor : 'var(--muted-foreground)',
+        borderTopColor: 'var(--border)',
+        borderRightColor: 'var(--border)',
+        borderBottomColor: 'var(--border)',
+        backgroundColor: group
+          ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint), var(--card))`
+          : 'var(--cal-task-neutral)',
         color: 'var(--foreground)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = group
+          ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint-hover), var(--card))`
+          : 'var(--cal-task-neutral-hover)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = group
+          ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint), var(--card))`
+          : 'var(--cal-task-neutral)'
       }}
     >
       {task.title}
