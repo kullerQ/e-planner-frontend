@@ -1,43 +1,82 @@
-import { messages } from '@/lib/messages'
-import { OFFLINE_DAILY_PHRASE } from '@/lib/mock/offlineContent'
+import { backendFetchJson } from '@/lib/api/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
+import { OFFLINE_DAILY_PHRASE } from '@/lib/mock/offlineContent'
+import type { Task, TaskGroup, Tag } from '@/types'
+import { DashboardClient } from '@/components/dashboard/DashboardClient'
+
+export interface ActivityEntry {
+  date: string
+  count: number
+}
+
+interface DailyPhraseResponse {
+  text: string
+  attribution?: string | undefined
+}
+
+async function fetchTasks(): Promise<Task[]> {
+  try {
+    return await backendFetchJson<Task[]>('/tasks')
+  } catch {
+    return []
+  }
+}
+
+async function fetchGroups(): Promise<TaskGroup[]> {
+  try {
+    return await backendFetchJson<TaskGroup[]>('/groups')
+  } catch {
+    return []
+  }
+}
+
+async function fetchTags(): Promise<Tag[]> {
+  try {
+    return await backendFetchJson<Tag[]>('/tags')
+  } catch {
+    return []
+  }
+}
+
+async function fetchActivity(): Promise<ActivityEntry[]> {
+  try {
+    return await backendFetchJson<ActivityEntry[]>('/activity')
+  } catch {
+    return []
+  }
+}
+
+async function fetchDailyPhrase(): Promise<DailyPhraseResponse | null> {
+  try {
+    return await backendFetchJson<DailyPhraseResponse>('/daily-phrase')
+  } catch {
+    return null
+  }
+}
 
 export default async function DashboardPage() {
   const isOfflineMock = await isDevOfflineMockEnabled()
-  const offlineMessages = messages.dashboard.offline
+
+  const [tasks, groups, tags, phraseData, activityData] = await Promise.all([
+    isOfflineMock ? [] : fetchTasks(),
+    isOfflineMock ? [] : fetchGroups(),
+    isOfflineMock ? [] : fetchTags(),
+    isOfflineMock
+      ? { text: OFFLINE_DAILY_PHRASE.text, attribution: undefined }
+      : (await fetchDailyPhrase()) ?? { text: OFFLINE_DAILY_PHRASE.text, attribution: undefined },
+    isOfflineMock ? [] : fetchActivity(),
+  ])
 
   return (
-    <main className="space-y-6 p-6 overflow-y-auto h-full">
-      <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.title}</h1>
-      <section
-        className="grid gap-4"
-        style={{
-          gridTemplateColumns: 'repeat(12, 1fr)',
-        }}
-      >
-        <article className="col-span-12 rounded-lg border border-border/60 bg-card p-4 md:col-span-6">
-          <h2 className="text-base font-medium text-foreground">Today&apos;s Tasks</h2>
-          <p className="mt-2 rounded-md border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground">
-            {isOfflineMock ? offlineMessages.todaysTasksWidget : 'Task metrics are available online.'}
-          </p>
-        </article>
-
-        <article className="col-span-12 rounded-lg border border-border/60 bg-card p-4 md:col-span-6">
-          <h2 className="text-base font-medium text-foreground">Activity Graph</h2>
-          <p className="mt-2 rounded-md border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground">
-            {isOfflineMock ? offlineMessages.activityWidget : 'Activity analytics are available online.'}
-          </p>
-        </article>
-
-        <article className="col-span-12 rounded-lg border border-border/60 bg-card p-4">
-          <h2 className="text-base font-medium text-foreground">Daily Phrase</h2>
-          <p className="mt-2 rounded-md border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground">
-            {isOfflineMock
-              ? `${offlineMessages.dailyPhraseWidget}: ${OFFLINE_DAILY_PHRASE.text}`
-              : 'Daily phrase is loaded from backend.'}
-          </p>
-        </article>
-      </section>
+    <main className="flex flex-col h-full overflow-y-auto">
+      <DashboardClient
+        tasks={tasks}
+        groups={groups}
+        tags={tags}
+        phrase={phraseData.text}
+        attribution={phraseData.attribution}
+        activityData={activityData}
+      />
     </main>
   )
 }

@@ -255,6 +255,66 @@ export const messages = {
     working: 'Working...',
     close: 'Close',
   },
+  widgets: {
+    todaysTasks: {
+      title: "Today's Tasks",
+      allDone: 'All done',
+      nothingDue: 'Nothing due today',
+      overdue: 'Overdue',
+      deleteAria: 'Delete task',
+      moveToRecycleBin: 'Move to recycle bin',
+    },
+    monthCalendar: {
+      previousMonth: 'Previous month',
+      nextMonth: 'Next month',
+    },
+    activityGraph: {
+      title: 'Activity',
+      loading: 'Loading...',
+      taskCompleted: '{count} {plural} completed',
+      task: 'task',
+      tasks: 'tasks',
+      completedText: '{date} — {count} {plural} completed',
+      less: 'Less',
+      more: 'More',
+    },
+    clock: {
+      loading: 'Loading...',
+    },
+    dailyPhrase: {
+      loading: 'Loading...',
+    },
+    shell: {
+      dragWidget: 'Drag widget',
+      removeWidget: 'Remove widget',
+    },
+  },
+  settings: {
+    title: 'Settings',
+    profile: 'Profile',
+    account: 'Account',
+  },
+  taskRow: {
+    updateStatus: 'Update task status',
+  },
+  taskDetail: {
+    notes: 'Notes',
+  },
+  folders: {
+    newFolder: 'New folder',
+    pressEnterToCreate: 'Press Enter to create',
+    noTasks: 'No tasks',
+    tasksCount: '{count} {plural}',
+    task: 'task',
+    tasks: 'tasks',
+    addTask: '[+ Add task]',
+    createNewTask: 'Create new task',
+    searchUngrouped: 'Search ungrouped...',
+    noTasksMatch: 'No tasks match your search',
+    noFoldersYet: 'No folders yet',
+    createFirstFolder: '[Create your first folder]',
+    changeColor: 'Change folder color',
+  },
   a11y: {
     close: 'Close',
   },
