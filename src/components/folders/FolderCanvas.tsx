@@ -212,13 +212,13 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
       <>
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
           <HugeiconsIcon icon={Folder01Icon} size={40} className="text-muted-foreground/50" />
-          <h3 className="text-base font-medium text-foreground">No folders yet</h3>
+          <h3 className="text-base font-medium text-foreground">{messages.folders.noFoldersYet}</h3>
           <button
             type="button"
             onClick={handleCreateClick}
             className="text-sm text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-2 py-1"
           >
-            [Create your first folder]
+            {messages.folders.createFirstFolder}
           </button>
         </div>
         <DeleteGroupDialog

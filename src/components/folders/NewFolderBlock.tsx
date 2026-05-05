@@ -92,7 +92,7 @@ export function NewFolderBlock({ draftGroup, onCreate, onCancel }: NewFolderBloc
               data-color-picker
               className="size-4 rounded-sm flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               style={{ backgroundColor: colorHex }}
-              aria-label="Change folder color"
+              aria-label={messages.folders.changeColor}
             />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-2">
@@ -119,16 +119,14 @@ export function NewFolderBlock({ draftGroup, onCreate, onCancel }: NewFolderBloc
       {/* Empty task list placeholder */}
       <div className="px-4 py-1 max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-border/60 scrollbar-track-transparent">
         <div className="text-xs text-muted-foreground/60 py-2 italic">
-          New folder
+          {messages.folders.newFolder}
         </div>
       </div>
 
       {/* Footer */}
       <div className="px-4 pb-4 pt-2 border-t border-border/40 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">0 tasks</span>
-        <span className="text-xs text-muted-foreground/60">
-          Press Enter to create
-        </span>
+        <span className="text-xs text-muted-foreground">{messages.folders.pressEnterToCreate}</span>
       </div>
     </div>
   )

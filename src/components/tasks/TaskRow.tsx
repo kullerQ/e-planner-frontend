@@ -8,6 +8,7 @@ import { updateTaskStatus } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatDueDate, isDueSoon, isOverdue } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import type { Task, TaskGroup, TaskStatus } from '@/types'
@@ -203,7 +204,7 @@ export function TaskRow({
                 'group/status min-h-11 min-w-11 inline-flex items-center justify-center rounded-sm cursor-pointer',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
               )}
-              aria-label="Update task status"
+              aria-label={messages.taskRow.updateStatus}
             >
               <StatusBadge
                 status={displayStatus}

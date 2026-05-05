@@ -218,6 +218,9 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const titleRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
+    if (!isOpen) {
+      return
+    }
     const nextDraft =
       mode === 'create'
         ? emptyDraft(initialValues)
@@ -229,7 +232,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     setBaseline(nextDraft)
     setFieldError({})
     setTagQuery('')
-  }, [mode, sourceTaskWithOverrides, initialValues])
+  }, [isOpen, mode, sourceTaskWithOverrides, initialValues])
 
   useEffect(() => {
     if (!isOpen) {
@@ -385,7 +388,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   }
 
   function requestCloseSheet() {
-    if (mode === 'edit' && hasUnsavedChanges) {
+    if (hasUnsavedChanges) {
       setConfirmCloseOpen(true)
       return
     }
@@ -489,14 +492,34 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   }
 
   async function handleSaveAndClose() {
-    if (mode === 'create') {
-      closeSheet()
+    const parsed = taskTitleSchema.safeParse(draft.title.trim())
+    if (!parsed.success) {
+      setFieldFailure('title', parsed.error?.issues[0]?.message ?? messages.validation.taskTitleRequired)
       return
     }
 
-    const parsed = taskTitleSchema.safeParse(draft.title.trim())
-    if (!parsed.success || taskId === null) {
-      setFieldFailure('title', parsed.error?.issues[0]?.message ?? 'Title is required')
+    if (mode === 'create') {
+      try {
+        await createTask({
+          title: parsed.data,
+          status: draft.status,
+          priority: draft.priority,
+          dueDate: draft.dueDate,
+          groupId: draft.groupId,
+          tagIds: draft.tagIds,
+          notes: draft.notes.length > 0 ? draft.notes : null,
+        })
+        setConfirmCloseOpen(false)
+        closeSheet()
+        router.refresh()
+      } catch {
+        setFieldFailure('submit', messages.tasks.errorCreate)
+      }
+      return
+    }
+
+    if (taskId === null) {
+      setFieldFailure('submit', messages.tasks.errorSave)
       return
     }
 
@@ -515,7 +538,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
       closeSheet()
       router.refresh()
     } catch {
-      setFieldFailure('submit', 'Could not save task changes.')
+      setFieldFailure('submit', messages.tasks.errorSave)
     }
   }
 

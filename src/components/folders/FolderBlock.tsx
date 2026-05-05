@@ -180,7 +180,7 @@ export function FolderBlock({
               type="button"
               className="size-4 rounded-sm flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               style={{ backgroundColor: group.colorHex }}
-              aria-label="Change folder color"
+              aria-label={messages.folders.changeColor}
             />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[240px] p-3">
@@ -248,7 +248,7 @@ export function FolderBlock({
       <div className="px-4 py-1 max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-border/60 scrollbar-track-transparent">
         {tasks.length === 0 ? (
           <div className="text-xs text-muted-foreground/60 py-2 italic">
-            No tasks
+            {messages.folders.noTasks}
           </div>
         ) : (
           tasks.map((task) => (
@@ -292,7 +292,7 @@ export function FolderBlock({
       {/* Footer */}
       <div className="px-4 pb-4 pt-2 border-t border-border/40 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+          {tasks.length} {tasks.length !== 1 ? messages.folders.tasks : messages.folders.task}
         </span>
         <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
@@ -300,7 +300,7 @@ export function FolderBlock({
               type="button"
               className="text-xs text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1"
             >
-              [+ Add task]
+              {messages.folders.addTask}
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 p-2">
@@ -311,7 +311,7 @@ export function FolderBlock({
                 className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 flex items-center gap-2"
               >
                 <HugeiconsIcon icon={PlusSignIcon} size={14} className="text-primary" />
-                <span>Create new task</span>
+                <span>{messages.folders.createNewTask}</span>
               </button>
 
               {ungroupedTasks.length > 0 ? (
@@ -327,7 +327,7 @@ export function FolderBlock({
                     <input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search ungrouped..."
+                      placeholder={messages.folders.searchUngrouped}
                       className="h-7 w-full rounded-sm bg-muted/50 pl-6 pr-6 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:bg-muted/80 transition-colors"
                     />
                     {searchQuery && (
@@ -344,7 +344,7 @@ export function FolderBlock({
                   <div className="max-h-[160px] overflow-y-auto scrollbar-thin mt-1">
                     {filteredUngrouped.length === 0 ? (
                       <p className="px-2 py-3 text-center text-xs text-muted-foreground/60">
-                        No tasks match your search
+                        {messages.folders.noTasksMatch}
                       </p>
                     ) : (
                       filteredUngrouped.map((task) => (
