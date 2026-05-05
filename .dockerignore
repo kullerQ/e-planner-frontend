@@ -1,0 +1,28 @@
+# dependencies & build
+node_modules
+.next
+out
+
+# git & tooling
+.git
+.gitignore
+.cursor
+
+# env & secrets (inject at run/build via Docker / compose)
+.env
+.env.*
+
+# logs & caches
+npm-debug.log*
+pnpm-debug.log*
+*.tsbuildinfo
+eslint.config.mjs
+
+# tests & docs (not needed to run the app)
+coverage
+*.md
+handoffs
+
+# OS
+.DS_Store
+Thumbs.db
