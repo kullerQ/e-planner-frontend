@@ -34,6 +34,7 @@ export const useDashboardStore = create<DashboardStore>()(
     {
       name: 'e-planner-dashboard-layout',
       version: 3,
+      migrate: (persistedState) => persistedState as DashboardStore,
     }
   )
 )
