@@ -7,6 +7,8 @@ import { CalendarTaskPill, CalendarTaskBlock } from './CalendarCell'
 import { cn } from '@/lib/utils'
 import type { Task, TaskGroup } from '@/types'
 import type { WeekStartsOn } from '@/lib/preferences'
+import { formatWeekdayShort } from '@/lib/i18n/calendarLabels'
+import { useI18n } from '@/lib/messages'
 
 const TOTAL_MINUTES = 24 * 60
 const SLOT_MINUTES = 30
@@ -126,15 +128,12 @@ function getGroupMap(groups: TaskGroup[]): Map<string, TaskGroup> {
   return new Map(groups.map((g) => [g.id, g]))
 }
 
-const DAY_SHORT_NAMES_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const DAY_SHORT_NAMES_SUN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
 interface TimeGridProps {
   dates: Date[]
   tasks: Task[]
   groupMap: Map<string, TaskGroup>
   hiddenGroupIds: Set<string>
-  weekStartsOn: WeekStartsOn
+  locale: string
   todayFlash: boolean
   onClickSlot: (date: Date, slotIndex: number) => void
   onTaskClick: (taskId: string) => void
@@ -145,7 +144,7 @@ function TimeGrid({
   tasks,
   groupMap,
   hiddenGroupIds,
-  weekStartsOn,
+  locale,
   todayFlash,
   onClickSlot,
   onTaskClick,
@@ -157,8 +156,6 @@ function TimeGrid({
   })
   const [hoveredSlot, setHoveredSlot] = useState<{ colIdx: number; slotIdx: number } | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
-
-  const dayNames = weekStartsOn === 0 ? DAY_SHORT_NAMES_SUN : DAY_SHORT_NAMES_MON
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -198,8 +195,7 @@ function TimeGrid({
         <div className="border-r border-border/30" />
         {dates.map((date, i) => {
           const isToday = i === todayColumnIndex
-          const dayIndex = (date.getDay() - (weekStartsOn === 0 ? 0 : 1) + 7) % 7
-          const dayName = dayNames[dayIndex] ?? ''
+          const dayName = formatWeekdayShort(locale, date.getDay())
           return (
             <div
               key={date.toISOString()}
@@ -320,6 +316,7 @@ interface MonthGridProps {
   groupMap: Map<string, TaskGroup>
   hiddenGroupIds: Set<string>
   weekStartsOn: WeekStartsOn
+  locale: string
   todayFlash: boolean
   onClickCell: (date: Date) => void
   onTaskClick: (taskId: string) => void
@@ -331,12 +328,21 @@ function MonthGrid({
   groupMap,
   hiddenGroupIds,
   weekStartsOn,
+  locale,
   todayFlash,
   onClickCell,
   onTaskClick,
 }: MonthGridProps) {
   const today = useMemo(() => new Date(), [])
-  const dayNames = weekStartsOn === 0 ? DAY_SHORT_NAMES_SUN : DAY_SHORT_NAMES_MON
+
+  const weekdayHeaders = useMemo(() => {
+    const labels: string[] = []
+    for (let i = 0; i < 7; i++) {
+      const dow = (weekStartsOn + i) % 7
+      labels.push(formatWeekdayShort(locale, dow))
+    }
+    return labels
+  }, [weekStartsOn, locale])
 
   const days = useMemo(() => getMonthDays(date, weekStartsOn), [date, weekStartsOn])
 
@@ -352,7 +358,7 @@ function MonthGrid({
     <div className="flex flex-col flex-1 overflow-auto">
       {/* Headers */}
       <div className="grid grid-cols-7 border-b border-border/50 flex-shrink-0">
-        {dayNames.map((name, i) => (
+        {weekdayHeaders.map((name, i) => (
           <div key={i} className="py-2 text-center text-xs text-muted-foreground uppercase border-r border-border/30 last:border-r-0">
             {name}
           </div>
@@ -561,6 +567,7 @@ export function CalendarGrid({
   onClickSlot,
   onTaskClick,
 }: CalendarGridProps) {
+  const { locale } = useI18n()
   const groupMap = useMemo(() => getGroupMap(groups), [groups])
 
   const weekDates = useMemo(
@@ -581,6 +588,7 @@ export function CalendarGrid({
         groupMap={groupMap}
         hiddenGroupIds={hiddenGroupIds}
         weekStartsOn={weekStartsOn}
+        locale={locale}
         todayFlash={todayFlash}
         onClickCell={(date) => handleClickSlot(date)}
         onTaskClick={onTaskClick}
@@ -607,7 +615,7 @@ export function CalendarGrid({
       tasks={tasks}
       groupMap={groupMap}
       hiddenGroupIds={hiddenGroupIds}
-      weekStartsOn={weekStartsOn}
+      locale={locale}
       todayFlash={todayFlash}
       onClickSlot={handleClickSlot}
       onTaskClick={onTaskClick}

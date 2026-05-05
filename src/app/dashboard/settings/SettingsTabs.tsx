@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import {
   ProfileSection,
   AppearanceSection,
@@ -29,40 +29,43 @@ interface TabConfig {
   icon: typeof UserIcon
 }
 
-const TABS: TabConfig[] = [
-  {
-    id: 'profile',
-    label: messages.settings.profile,
-    icon: UserIcon,
-  },
-  {
-    id: 'appearance',
-    label: messages.settings.appearance,
-    icon: Image01Icon,
-  },
-  {
-    id: 'taskDefaults',
-    label: messages.settings.taskDefaults,
-    icon: ClipboardIcon,
-  },
-  {
-    id: 'account',
-    label: messages.settings.account,
-    icon: Settings01Icon,
-  },
-]
-
 interface SettingsTabsProps {
   user: User
 }
 
 export function SettingsTabs({ user }: SettingsTabsProps) {
+  const { t } = useI18n()
+  const TABS = useMemo(
+    (): TabConfig[] => [
+      {
+        id: 'profile',
+        label: t.settings.profile,
+        icon: UserIcon,
+      },
+      {
+        id: 'appearance',
+        label: t.settings.appearance,
+        icon: Image01Icon,
+      },
+      {
+        id: 'taskDefaults',
+        label: t.settings.taskDefaults,
+        icon: ClipboardIcon,
+      },
+      {
+        id: 'account',
+        label: t.settings.account,
+        icon: Settings01Icon,
+      },
+    ],
+    [t],
+  )
   const [activeTab, setActiveTab] = useState<TabId>('profile')
 
   return (
     <div className="flex gap-6 px-6 pb-6">
       {/* Left Tab Navigation */}
-      <nav className="w-[160px] shrink-0" aria-label={messages.dashboard.sidebar.settingsSections}>
+      <nav className="w-[160px] shrink-0" aria-label={t.dashboard.sidebar.settingsSections}>
         <ul className="space-y-1">
           {TABS.map((tab) => (
             <li key={tab.id}>
@@ -88,7 +91,7 @@ export function SettingsTabs({ user }: SettingsTabsProps) {
                     className="w-full justify-start gap-2 px-3 py-2 h-auto text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   >
                     <HugeiconsIcon icon={Logout01Icon} size={16} />
-                    {messages.settings.logout}
+                    {t.settings.logout}
                   </Button>
                 </form>
               )}

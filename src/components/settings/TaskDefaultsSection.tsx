@@ -1,7 +1,7 @@
 'use client'
 
 import { useSettingsStore } from '@/stores/useSettingsStore'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import {
   Select,
   SelectContent,
@@ -11,31 +11,32 @@ import {
 } from '@/components/ui/select'
 import type { WeekStartsOn } from '@/lib/preferences'
 
-const STATUS_OPTIONS: { value: 'todo' | 'in_progress'; label: string }[] = [
-  { value: 'todo', label: messages.tasks.status.todo },
-  { value: 'in_progress', label: messages.tasks.status.in_progress },
-]
-
-const WEEK_START_OPTIONS: { value: WeekStartsOn; label: string }[] = [
-  { value: 1, label: messages.settings.weekStartsMonday },
-  { value: 0, label: messages.settings.weekStartsSunday },
-]
-
 export function TaskDefaultsSection() {
+  const { t } = useI18n()
   const { defaultStatus, weekStartsOn, setDefaultStatus, setWeekStartsOn } =
     useSettingsStore()
+
+  const STATUS_OPTIONS: { value: 'todo' | 'in_progress'; label: string }[] = [
+    { value: 'todo', label: t.tasks.status.todo },
+    { value: 'in_progress', label: t.tasks.status.in_progress },
+  ]
+
+  const WEEK_START_OPTIONS: { value: WeekStartsOn; label: string }[] = [
+    { value: 1, label: t.settings.weekStartsMonday },
+    { value: 0, label: t.settings.weekStartsSunday },
+  ]
 
   return (
     <div className="space-y-6 max-w-xl">
       <div className="space-y-2">
         <h2 className="text-base font-medium text-foreground mb-4">
-          {messages.settings.taskDefaults}
+          {t.settings.taskDefaults}
         </h2>
       </div>
 
       {/* Default Status */}
       <div className="space-y-2">
-        <Label>{messages.settings.defaultStatus}</Label>
+        <Label>{t.settings.defaultStatus}</Label>
         <Select
           value={defaultStatus}
           onValueChange={(value) => setDefaultStatus(value as 'todo' | 'in_progress')}
@@ -55,7 +56,7 @@ export function TaskDefaultsSection() {
 
       {/* Week Starts On */}
       <div className="space-y-2">
-        <Label>{messages.settings.weekStartsOn}</Label>
+        <Label>{t.settings.weekStartsOn}</Label>
         <Select
           value={String(weekStartsOn)}
           onValueChange={(value) => setWeekStartsOn(Number(value) as WeekStartsOn)}

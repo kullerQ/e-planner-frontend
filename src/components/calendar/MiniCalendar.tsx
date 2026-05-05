@@ -5,6 +5,8 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import type { WeekStartsOn } from '@/lib/preferences'
+import { formatWeekdayShort } from '@/lib/i18n/calendarLabels'
+import { useI18n } from '@/lib/messages'
 
 interface MiniCalendarProps {
   currentDate: Date
@@ -15,9 +17,6 @@ interface MiniCalendarProps {
   onPrevMonth: () => void
   onNextMonth: () => void
 }
-
-const DAY_NAMES_MON = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
-const DAY_NAMES_SUN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 function getWeekDates(date: Date, weekStartsOn: WeekStartsOn): Date[] {
   const day = date.getDay()
@@ -53,9 +52,17 @@ export function MiniCalendar({
   onPrevMonth,
   onNextMonth,
 }: MiniCalendarProps) {
+  const { locale } = useI18n()
   const today = useMemo(() => new Date(), [])
 
-  const dayNames = weekStartsOn === 0 ? DAY_NAMES_SUN : DAY_NAMES_MON
+  const weekdayHeaders = useMemo(() => {
+    const labels: string[] = []
+    for (let i = 0; i < 7; i++) {
+      const dow = (weekStartsOn + i) % 7
+      labels.push(formatWeekdayShort(locale, dow))
+    }
+    return labels
+  }, [weekStartsOn, locale])
 
   const { year, month } = useMemo(() => ({
     year: currentDate.getFullYear(),
@@ -64,8 +71,8 @@ export function MiniCalendar({
 
   const monthLabel = useMemo(
     () =>
-      currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-    [currentDate]
+      currentDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+    [currentDate, locale],
   )
 
   const calendarDays = useMemo(() => {
@@ -130,8 +137,8 @@ export function MiniCalendar({
 
       {/* Day name headers */}
       <div className="grid grid-cols-7 mb-1">
-        {dayNames.map((name) => (
-          <div key={name} className="text-center text-xs text-muted-foreground py-0.5">
+        {weekdayHeaders.map((name, idx) => (
+          <div key={`${idx}-${name}`} className="text-center text-xs text-muted-foreground py-0.5">
             {name}
           </div>
         ))}

@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useWeekStartsOn, type WeekStartsOn } from '@/lib/preferences'
-import { messages } from '@/lib/messages'
+import { formatWeekdayShort } from '@/lib/i18n/calendarLabels'
+import { useI18n } from '@/lib/messages'
 import type { ActivityEntry } from '@/app/dashboard/page'
 
 interface ActivityDay {
@@ -31,8 +32,8 @@ function dateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 }
 
-function formatActivityDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
+function formatActivityDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -92,6 +93,7 @@ function buildActivityGrid(
 
 function buildMonthLabels(
   weeks: ActivityDay[][],
+  locale: string,
 ): { weekIndex: number; weekSpan: number; label: string }[] {
   // First pass: collect every month transition with its starting weekIndex
   const raw: { weekIndex: number; label: string }[] = []
@@ -105,7 +107,7 @@ function buildMonthLabels(
     if (m !== lastMonth || y !== lastYear) {
       raw.push({
         weekIndex: wi,
-        label: firstDay.date.toLocaleDateString('en-US', { month: 'short' }),
+        label: firstDay.date.toLocaleDateString(locale, { month: 'short' }),
       })
       lastMonth = m
       lastYear = y
@@ -123,9 +125,8 @@ function buildMonthLabels(
   return out
 }
 
-const DAY_LABEL_BASE = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
 export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetProps) {
+  const { t, locale } = useI18n()
   const weekStartsOn = useWeekStartsOn()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const measureRef = useRef<HTMLDivElement | null>(null)
@@ -157,7 +158,7 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
     [weekStartsOn, completionMap, weeksToShow],
   )
 
-  const monthLabels = useMemo(() => buildMonthLabels(weeks), [weeks])
+  const monthLabels = useMemo(() => buildMonthLabels(weeks, locale), [weeks, locale])
 
   const totalCompleted = useMemo(
     () => weeks.reduce((s, w) => s + w.reduce((s2, d) => s2 + d.count, 0), 0),
@@ -167,11 +168,11 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
   const dayLabels = useMemo(() => {
     const arr: string[] = []
     for (let i = 0; i < 7; i++) {
-      const idx = (weekStartsOn + i) % 7
-      arr.push(DAY_LABEL_BASE[idx]!)
+      const dow = (weekStartsOn + i) % 7
+      arr.push(formatWeekdayShort(locale, dow))
     }
     return arr
-  }, [weekStartsOn])
+  }, [weekStartsOn, locale])
 
   // Week indices where a new year begins (skip index 0 — no delimiter before the first column)
   const yearDelimiters = useMemo(() => {
@@ -203,9 +204,9 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
     <div className="flex h-full flex-col gap-2.5 overflow-hidden">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-foreground">{messages.widgets.activityGraph.title}</span>
+          <span className="text-sm font-semibold text-foreground">{t.widgets.activityGraph.title}</span>
           <span className="text-xs text-muted-foreground">
-            {isLoading ? messages.widgets.activityGraph.loading : `${totalCompleted} ${totalCompleted === 1 ? messages.widgets.activityGraph.task : messages.widgets.activityGraph.tasks} completed`}
+            {isLoading ? t.widgets.activityGraph.loading : `${totalCompleted} ${totalCompleted === 1 ? t.widgets.activityGraph.task : t.widgets.activityGraph.tasks} completed`}
           </span>
         </div>
       </div>
@@ -302,7 +303,7 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
                         </TooltipTrigger>
                         <TooltipContent side="top">
                           <p className="text-xs">
-                            {formatActivityDate(day.date)} — {day.count} {day.count !== 1 ? messages.widgets.activityGraph.tasks : messages.widgets.activityGraph.task} completed
+                            {formatActivityDate(day.date, locale)} — {day.count} {day.count !== 1 ? t.widgets.activityGraph.tasks : t.widgets.activityGraph.task} completed
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -314,13 +315,13 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
           </div>
           {/* Legend */}
           <div className="flex items-center justify-end gap-1.5 text-[9px] text-muted-foreground shrink-0 mt-5">
-            <span>{messages.widgets.activityGraph.less}</span>
+            <span>{t.widgets.activityGraph.less}</span>
             <div className="size-2.5 rounded-[2px] bg-muted/60" />
             <div className="size-2.5 rounded-[2px] bg-primary/30" />
             <div className="size-2.5 rounded-[2px] bg-primary/55" />
             <div className="size-2.5 rounded-[2px] bg-primary/80" />
             <div className="size-2.5 rounded-[2px] bg-primary" />
-            <span>{messages.widgets.activityGraph.more}</span>
+            <span>{t.widgets.activityGraph.more}</span>
           </div>
         </div>
       )}

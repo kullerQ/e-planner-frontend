@@ -2,19 +2,12 @@
 
 import type { TaskStatus } from '@/types'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 
 interface StatusBadgeProps {
   status: TaskStatus
   onClick?: () => void
   className?: string
-}
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: messages.tasks.status.todo,
-  in_progress: messages.tasks.status.in_progress,
-  delayed: messages.tasks.status.delayed,
-  completed: messages.tasks.status.completed,
 }
 
 const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; dot: string }> = {
@@ -50,6 +43,15 @@ interface StatusBadgeInnerProps {
 }
 
 function StatusBadgeInner({ status, className }: StatusBadgeInnerProps) {
+  const { t } = useI18n()
+
+  const STATUS_LABELS: Record<TaskStatus, string> = {
+    todo: t.tasks.status.todo,
+    in_progress: t.tasks.status.in_progress,
+    delayed: t.tasks.status.delayed,
+    completed: t.tasks.status.completed,
+  }
+
   const styles = STATUS_STYLES[status]
 
   return (

@@ -3,19 +3,14 @@ import { useMemo, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { formatMonthLong, formatWeekdayShort } from '@/lib/i18n/calendarLabels'
+import { useI18n } from '@/lib/messages'
 import { useWeekStartsOn } from '@/lib/preferences'
 import type { Task } from '@/types'
 
 interface MonthCalendarWidgetProps {
   tasks?: Task[]
 }
-
-const WEEK_DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -26,6 +21,7 @@ function getFirstDayOfMonth(year: number, month: number): number {
 }
 
 export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
+  const { t, locale } = useI18n()
   const today = new Date()
   const weekStartsOn = useWeekStartsOn()
   const [viewYear, setViewYear] = useState(today.getFullYear())
@@ -37,9 +33,17 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
 
   const orderedWeekDays = useMemo(() => {
     const arr: string[] = []
-    for (let i = 0; i < 7; i++) arr.push(WEEK_DAY_LABELS[(weekStartsOn + i) % 7]!)
+    for (let i = 0; i < 7; i++) {
+      const dow = (weekStartsOn + i) % 7
+      arr.push(formatWeekdayShort(locale, dow))
+    }
     return arr
-  }, [weekStartsOn])
+  }, [weekStartsOn, locale])
+
+  const monthTitle = useMemo(
+    () => formatMonthLong(locale, viewYear, viewMonth),
+    [locale, viewYear, viewMonth],
+  )
 
   const tasksByDay = tasks
     .filter((t) => !t.isDeleted && t.dueDate)
@@ -89,21 +93,21 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
             {viewYear}
           </span>
           <span className="text-sm font-semibold text-foreground leading-tight">
-            {MONTH_NAMES[viewMonth]}
+            {monthTitle}
           </span>
         </div>
         <div className="flex items-center gap-0.5">
           <button
             onClick={prevMonth}
             className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={messages.widgets.monthCalendar.previousMonth}
+            aria-label={t.widgets.monthCalendar.previousMonth}
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
           </button>
           <button
             onClick={nextMonth}
             className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={messages.widgets.monthCalendar.nextMonth}
+            aria-label={t.widgets.monthCalendar.nextMonth}
           >
             <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
           </button>
@@ -111,8 +115,11 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
       </div>
 
       <div className="grid grid-cols-7 gap-y-1 flex-1">
-        {orderedWeekDays.map((d) => (
-          <div key={d} className="text-center text-[9px] text-muted-foreground/70 font-medium uppercase tracking-wider pb-1">
+        {orderedWeekDays.map((d, idx) => (
+          <div
+            key={`${idx}-${d}`}
+            className="text-center text-[9px] text-muted-foreground/70 font-medium uppercase tracking-wider pb-1"
+          >
             {d}
           </div>
         ))}

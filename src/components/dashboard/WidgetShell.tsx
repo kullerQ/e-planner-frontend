@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { DragDropVerticalIcon, Cancel01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { useDashboardStore } from '@/stores/useDashboardStore'
 import type { WidgetPlacement } from '@/types'
 
@@ -24,6 +24,7 @@ export function WidgetShell({
   dragHandleProps,
   variant = 'default',
 }: WidgetShellProps) {
+  const { t } = useI18n()
   const isEditMode = useDashboardStore((s) => s.isEditMode)
   const removeWidget = useDashboardStore((s) => s.removeWidget)
 
@@ -46,7 +47,7 @@ export function WidgetShell({
           <div
             {...dragHandleProps}
             className="flex h-6 w-6 items-center justify-center cursor-grab active:cursor-grabbing rounded text-muted-foreground/60 hover:bg-muted/60 hover:text-foreground transition-colors"
-            aria-label={messages.widgets.shell.dragWidget}
+            aria-label={t.widgets.shell.dragWidget}
             role="button"
           >
             <HugeiconsIcon icon={DragDropVerticalIcon} size={14} />
@@ -55,7 +56,7 @@ export function WidgetShell({
             type="button"
             onClick={() => removeWidget(placement.instanceId)}
             className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive transition-colors"
-            aria-label={messages.widgets.shell.removeWidget}
+            aria-label={t.widgets.shell.removeWidget}
           >
             <HugeiconsIcon icon={Cancel01Icon} size={13} />
           </button>

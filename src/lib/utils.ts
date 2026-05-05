@@ -13,8 +13,14 @@ export function resolveTaskColor(task: Task, group: TaskGroup | null): string {
 }
 
 // Format ISO date string to human-readable with time (e.g. "Mar 30, 14:30")
-export function formatDueDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+export function formatDueDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
 // Returns true if an ISO date string is in the past
@@ -40,20 +46,34 @@ export function randomGroupColor(): string {
   return palette[index] ?? '#4ade80'
 }
 
-// Returns "N days ago" relative time label
-export function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const days = Math.floor(diff / 86_400_000)
-  if (days === 0) return 'today'
-  if (days === 1) return '1 day ago'
-  return `${days} days ago`
+/** Past-oriented day buckets (same rules as before: under 24h uses the “today” tier). */
+export function relativeTime(iso: string, locale: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) {
+    return '—'
+  }
+  const diffMs = Date.now() - then
+  const days = Math.floor(diffMs / 86_400_000)
+  const auto = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const always = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+  if (days <= 0) {
+    return auto.format(0, 'day')
+  }
+  return always.format(-days, 'day')
 }
 
-// Returns "in N days" label for auto-deletion countdown
-export function daysUntil(iso: string): string {
-  const diff = new Date(iso).getTime() - Date.now()
-  const days = Math.ceil(diff / 86_400_000)
-  if (days <= 0) return 'today'
-  if (days === 1) return 'in 1 day'
-  return `in ${days} days`
+/** Future-oriented countdown in whole days (ceil), localized via Intl. */
+export function daysUntil(iso: string, locale: string): string {
+  const target = new Date(iso).getTime()
+  if (Number.isNaN(target)) {
+    return '—'
+  }
+  const diffMs = target - Date.now()
+  const days = Math.ceil(diffMs / 86_400_000)
+  const auto = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const always = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+  if (days <= 0) {
+    return auto.format(0, 'day')
+  }
+  return always.format(days, 'day')
 }

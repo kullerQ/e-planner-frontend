@@ -5,13 +5,13 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { CalendarGrid } from '@/components/calendar/CalendarGrid'
 import { CalendarRightSidebar } from '@/components/calendar/CalendarRightSidebar'
-import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet'
 import { useViewStore } from '@/stores/useViewStore'
 import { useCalendarVisibilityStore } from '@/stores/useCalendarVisibilityStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useWeekStartsOn } from '@/lib/preferences'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/messages'
 import {
   Select,
   SelectContent,
@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Tag, Task, TaskGroup } from '@/types'
+import type { Task, TaskGroup } from '@/types'
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -39,26 +39,36 @@ function getWeekRange(date: Date, weekStartsOn: number): { start: Date; end: Dat
   return { start, end }
 }
 
-function formatPeriodLabel(date: Date, view: 'day' | 'week' | 'month', weekStartsOn: number): string {
+function formatPeriodLabel(
+  date: Date,
+  view: 'day' | 'week' | 'month',
+  weekStartsOn: number,
+  locale: string,
+): string {
   if (view === 'day') {
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString(locale, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
   }
   if (view === 'month') {
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
   }
   const { start, end } = getWeekRange(date, weekStartsOn)
-  const startLabel = start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-  const endLabel = end.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-  return `Week of ${startLabel}–${endLabel}`
+  const startLabel = start.toLocaleDateString(locale, { month: 'long', day: 'numeric' })
+  const endLabel = end.toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' })
+  return `${startLabel}–${endLabel}`
 }
 
 interface CalendarClientProps {
   initialTasks: Task[]
   initialGroups: TaskGroup[]
-  tags: Tag[]
 }
 
-export function CalendarClient({ initialTasks, initialGroups, tags }: CalendarClientProps) {
+export function CalendarClient({ initialTasks, initialGroups }: CalendarClientProps) {
+  const { t, locale } = useI18n()
   const { calendarView, setCalendarView } = useViewStore()
   const { hiddenGroupIds } = useCalendarVisibilityStore()
   const { isOpen: isTaskSheetOpen, open: openTaskSheet } = useTaskSheetStore()
@@ -148,8 +158,8 @@ export function CalendarClient({ initialTasks, initialGroups, tags }: CalendarCl
   )
 
   const periodLabel = useMemo(
-    () => formatPeriodLabel(currentDate, calendarView, weekStartsOn),
-    [currentDate, calendarView, weekStartsOn]
+    () => formatPeriodLabel(currentDate, calendarView, weekStartsOn, locale),
+    [currentDate, calendarView, weekStartsOn, locale],
   )
 
   return (
@@ -167,14 +177,14 @@ export function CalendarClient({ initialTasks, initialGroups, tags }: CalendarCl
               isSameDay(currentDate, new Date()) && 'border-primary/50'
             )}
           >
-            Today
+            {t.dashboard.calendar.today}
           </button>
 
           <button
             type="button"
             onClick={() => navigate(-1)}
             className="size-8 flex items-center justify-center rounded-md border border-border hover:bg-accent transition-colors"
-            aria-label="Previous period"
+            aria-label={t.dashboard.calendar.previousPeriod}
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
           </button>
@@ -183,7 +193,7 @@ export function CalendarClient({ initialTasks, initialGroups, tags }: CalendarCl
             type="button"
             onClick={() => navigate(1)}
             className="size-8 flex items-center justify-center rounded-md border border-border hover:bg-accent transition-colors"
-            aria-label="Next period"
+            aria-label={t.dashboard.calendar.nextPeriod}
           >
             <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
           </button>
@@ -198,9 +208,9 @@ export function CalendarClient({ initialTasks, initialGroups, tags }: CalendarCl
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
+              <SelectItem value="day">{t.dashboard.calendar.viewDay}</SelectItem>
+              <SelectItem value="week">{t.dashboard.calendar.viewWeek}</SelectItem>
+              <SelectItem value="month">{t.dashboard.calendar.viewMonth}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -234,9 +244,6 @@ export function CalendarClient({ initialTasks, initialGroups, tags }: CalendarCl
         onNextMonth={handleMiniCalNextMonth}
       />
 
-      <TaskDetailSheet tasks={tasks} groups={groups} tags={tags} onTaskUpdated={(updatedTask) => {
-        setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
-      }} />
     </div>
   )
 }

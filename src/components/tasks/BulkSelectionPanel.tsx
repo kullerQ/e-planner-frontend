@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import type { Tag, TaskGroup } from '@/types'
 
@@ -35,6 +35,7 @@ export function BulkSelectionPanel({
   onBulkDeleted,
   onBulkTagsAdded,
 }: BulkSelectionPanelProps) {
+  const { t } = useI18n()
   const selectedIds = useSelectionStore((state) => state.selectedIds)
   const clearSelection = useSelectionStore((state) => state.clearSelection)
   const exitSelectMode = useSelectionStore((state) => state.exitSelectMode)
@@ -65,7 +66,7 @@ export function BulkSelectionPanel({
         clearSelection()
         toast.success(successMessage)
       } catch {
-        toast.error(messages.bulkActions.errorBulk)
+        toast.error(t.bulkActions.errorBulk)
       }
     })
   }
@@ -89,7 +90,7 @@ export function BulkSelectionPanel({
         await bulkAddTags(selectedTaskIds, tagIds)
         onBulkTagsAdded(selectedTaskIds, tagIds)
       },
-      messages.bulkActions.successTags.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
+      t.bulkActions.successTags.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
     )
   }
 
@@ -104,9 +105,9 @@ export function BulkSelectionPanel({
         onBulkDeleted(selectedTaskIds)
         clearSelection()
         exitSelectMode()
-        toast.info(messages.bulkActions.successDeleted.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's'))
+        toast.info(t.bulkActions.successDeleted.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's'))
       } catch {
-        toast.error(messages.bulkActions.errorDelete)
+        toast.error(t.bulkActions.errorDelete)
       }
     })
   }
@@ -117,36 +118,36 @@ export function BulkSelectionPanel({
         'w-72 bg-card/90 backdrop-blur-sm border-l border-border/60 p-4 flex flex-col gap-4',
         'transition-[width,opacity] duration-200 ease-out'
       )}
-      aria-label={messages.bulkActions.panelAria}
+      aria-label={t.bulkActions.panelAria}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-foreground">
-          {messages.bulkActions.selectedCount.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')}
+          {t.bulkActions.selectedCount.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')}
         </p>
         <Button type="button" variant="ghost" onClick={exitSelectMode} className="min-h-11 px-3">
-          {messages.bulkActions.cancel}
+          {t.bulkActions.cancel}
         </Button>
       </div>
 
       <div className="border-t border-border/60" />
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{messages.bulkActions.assignToFolder}</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.bulkActions.assignToFolder}</p>
         <Select
           disabled={selectedCount === 0 || pendingAction}
           onValueChange={(value) => {
             const groupId = value === '__none__' ? null : value
             runBulkAction(
               () => bulkMoveToGroup(selectedTaskIds, groupId),
-              messages.bulkActions.successMoved.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
+              t.bulkActions.successMoved.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
             )
           }}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={messages.bulkActions.selectFolder} />
+            <SelectValue placeholder={t.bulkActions.selectFolder} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">{messages.bulkActions.noFolder}</SelectItem>
+            <SelectItem value="__none__">{t.bulkActions.noFolder}</SelectItem>
             {groups.map((group) => (
               <SelectItem key={group.id} value={group.id}>
                 {group.name}
@@ -157,7 +158,7 @@ export function BulkSelectionPanel({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{messages.bulkActions.addTags}</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.bulkActions.addTags}</p>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -167,7 +168,7 @@ export function BulkSelectionPanel({
               className="w-full justify-between"
             >
               <span className="truncate text-left">
-                {selectedTagIds.size > 0 ? messages.bulkActions.tagsSelected.replace('{count}', String(selectedTagIds.size)) : messages.bulkActions.selectTags}
+                {selectedTagIds.size > 0 ? t.bulkActions.tagsSelected.replace('{count}', String(selectedTagIds.size)) : t.bulkActions.selectTags}
               </span>
               <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="text-muted-foreground" />
             </Button>
@@ -177,11 +178,11 @@ export function BulkSelectionPanel({
               <Input
                 value={tagQuery}
                 onChange={(event) => setTagQuery(event.target.value)}
-                placeholder={messages.bulkActions.searchTags}
+                placeholder={t.bulkActions.searchTags}
               />
               <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
                 {filteredTags.length === 0 ? (
-                  <p className="px-2 py-1 text-xs text-muted-foreground">{messages.bulkActions.noMatchingTags}</p>
+                  <p className="px-2 py-1 text-xs text-muted-foreground">{t.bulkActions.noMatchingTags}</p>
                 ) : (
                   filteredTags.map((tag) => {
                     const checked = selectedTagIds.has(tag.id)
@@ -206,7 +207,7 @@ export function BulkSelectionPanel({
                 disabled={selectedTagIds.size === 0 || selectedCount === 0 || pendingAction}
                 className="w-full"
               >
-                {messages.bulkActions.applyTags}
+                {t.bulkActions.applyTags}
               </Button>
             </div>
           </PopoverContent>
@@ -223,15 +224,15 @@ export function BulkSelectionPanel({
         onClick={() => setIsDeleteDialogOpen(true)}
       >
         <HugeiconsIcon icon={Delete02Icon} size={16} />
-        {messages.bulkActions.deleteSelected}
+        {t.bulkActions.deleteSelected}
       </Button>
 
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        title={messages.bulkActions.deleteTitle}
-        description={messages.bulkActions.deleteDescription.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')}
-        confirmLabel={messages.bulkActions.deleteAction}
+        title={t.bulkActions.deleteTitle}
+        description={t.bulkActions.deleteDescription.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')}
+        confirmLabel={t.bulkActions.deleteAction}
         onConfirm={handleDeleteSelected}
         isPending={pendingAction}
       />

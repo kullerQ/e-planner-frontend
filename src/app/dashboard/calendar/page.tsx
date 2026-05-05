@@ -1,17 +1,15 @@
 import { backendFetchJson } from '@/lib/api/server'
 import { CalendarClient } from './CalendarClient'
-import type { Tag, Task, TaskGroup } from '@/types'
+import type { Task, TaskGroup } from '@/types'
 
 export default async function CalendarPage() {
   let tasks: Task[]
   let groups: TaskGroup[]
-  let tags: Tag[]
 
   try {
-    ;[tasks, groups, tags] = await Promise.all([
+    ;[tasks, groups] = await Promise.all([
       backendFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
       backendFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
-      backendFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
     ])
   } catch {
     return (
@@ -24,5 +22,5 @@ export default async function CalendarPage() {
     )
   }
 
-  return <CalendarClient initialTasks={tasks} initialGroups={groups} tags={tags} />
+  return <CalendarClient initialTasks={tasks} initialGroups={groups} />
 }

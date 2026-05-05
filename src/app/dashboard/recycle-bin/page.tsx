@@ -1,16 +1,16 @@
 import { RecycleBinClient } from './RecycleBinClient'
 import { backendFetchJson } from '@/lib/api/server'
-import { messages } from '@/lib/messages'
+import { getServerMessages } from '@/lib/i18n/server'
 import type { Task } from '@/types'
 
 export default async function RecycleBinPage() {
+  const messages = await getServerMessages()
+
+  let tasks: Task[]
   try {
-    const tasks = await backendFetchJson<Task[]>('/tasks?deleted=true', {
+    tasks = await backendFetchJson<Task[]>('/tasks?deleted=true', {
       next: { tags: ['tasks'] },
     })
-    const deletedTasks = tasks.filter((task) => task.deletedAt !== null)
-
-    return <RecycleBinClient tasks={deletedTasks} />
   } catch {
     return (
       <main className="p-6 overflow-y-auto h-full">
@@ -21,4 +21,7 @@ export default async function RecycleBinPage() {
       </main>
     )
   }
+
+  const deletedTasks = tasks.filter((task) => task.deletedAt !== null)
+  return <RecycleBinClient tasks={deletedTasks} />
 }

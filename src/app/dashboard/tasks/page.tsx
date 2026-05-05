@@ -1,9 +1,10 @@
 import { TaskListClient } from './TaskListClient'
 import { backendFetchJson } from '@/lib/api/server'
-import { messages } from '@/lib/messages'
+import { getServerMessages } from '@/lib/i18n/server'
 import type { Tag, Task, TaskGroup } from '@/types'
 
 export default async function TasksPage() {
+  const messages = await getServerMessages()
   let tasks: Task[]
   let groups: TaskGroup[]
   let tags: Tag[]

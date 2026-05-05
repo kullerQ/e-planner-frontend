@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ColorPickerPopover } from '@/components/shared/ColorPickerPopover'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { cn } from '@/lib/utils'
 
 interface NewFolderBlockProps {
@@ -18,6 +18,7 @@ interface NewFolderBlockProps {
 }
 
 export function NewFolderBlock({ draftGroup, onCreate, onCancel }: NewFolderBlockProps) {
+  const { t } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(draftGroup.name)
   const [colorHex, setColorHex] = useState(draftGroup.colorHex)
@@ -92,7 +93,7 @@ export function NewFolderBlock({ draftGroup, onCreate, onCancel }: NewFolderBloc
               data-color-picker
               className="size-4 rounded-sm flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               style={{ backgroundColor: colorHex }}
-              aria-label={messages.folders.changeColor}
+              aria-label={t.folders.changeColor}
             />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-2">
@@ -109,24 +110,24 @@ export function NewFolderBlock({ draftGroup, onCreate, onCancel }: NewFolderBloc
           onChange={(e) => setName(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          placeholder={messages.dashboard.folders.newFolderPlaceholder}
+          placeholder={t.dashboard.folders.newFolderPlaceholder}
           disabled={isSubmitting}
           className="h-7 text-sm flex-1"
-          aria-label={messages.dashboard.folders.newFolderPlaceholder}
+          aria-label={t.dashboard.folders.newFolderPlaceholder}
         />
       </div>
 
       {/* Empty task list placeholder */}
       <div className="px-4 py-1 max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-border/60 scrollbar-track-transparent">
         <div className="text-xs text-muted-foreground/60 py-2 italic">
-          {messages.folders.newFolder}
+          {t.folders.newFolder}
         </div>
       </div>
 
       {/* Footer */}
       <div className="px-4 pb-4 pt-2 border-t border-border/40 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">0 tasks</span>
-        <span className="text-xs text-muted-foreground">{messages.folders.pressEnterToCreate}</span>
+        <span className="text-xs text-muted-foreground">{t.folders.pressEnterToCreate}</span>
       </div>
     </div>
   )

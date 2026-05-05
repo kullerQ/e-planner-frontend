@@ -15,7 +15,7 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from '@codemirror/view'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { updateTaskField } from '@/actions/tasks'
 
 type SyntaxNode = ReturnType<ReturnType<typeof syntaxTree>['resolveInner']>
@@ -417,6 +417,7 @@ const editorTheme = EditorView.theme({
 })
 
 export function TaskNotesMarkdown({ taskId, notes, onNotesChange }: TaskNotesMarkdownProps) {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const lastMarkdownRef = useRef(notes ?? '')
@@ -505,7 +506,7 @@ export function TaskNotesMarkdown({ taskId, notes, onNotesChange }: TaskNotesMar
 
   return (
     <section className="space-y-2">
-      <p className="text-xs text-muted-foreground">{messages.taskDetail.notes}</p>
+      <p className="text-xs text-muted-foreground">{t.taskDetail.notes}</p>
       <div
         ref={containerRef}
         className="task-notes-editor min-h-[220px] cursor-text rounded-md border border-border/60 bg-card/80 backdrop-blur-sm"

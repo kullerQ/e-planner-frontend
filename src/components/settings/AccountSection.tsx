@@ -4,11 +4,12 @@ import { useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { changePassword } from '@/actions/settings'
 import { toast } from 'sonner'
 
 export function AccountSection() {
+  const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -27,7 +28,7 @@ export function AccountSection() {
     })
 
     if (result.success) {
-      toast.success(messages.settings.passwordChanged)
+      toast.success(t.settings.passwordChanged)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmNewPassword('')
@@ -35,7 +36,7 @@ export function AccountSection() {
       if (result.fieldErrors) {
         setFieldErrors(result.fieldErrors)
       } else {
-        toast.error(result.error || messages.settings.passwordChangeError)
+        toast.error(result.error || t.settings.passwordChangeError)
       }
     }
 
@@ -46,14 +47,14 @@ export function AccountSection() {
     <div className="space-y-8 max-w-xl">
       <div className="space-y-2">
         <h2 className="text-base font-medium text-foreground mb-4">
-          {messages.settings.account}
+          {t.settings.account}
         </h2>
       </div>
 
       {/* Change Password */}
       <form onSubmit={handlePasswordSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="current-password">{messages.settings.currentPassword}</Label>
+          <Label htmlFor="current-password">{t.settings.currentPassword}</Label>
           <Input
             id="current-password"
             type="password"
@@ -67,7 +68,7 @@ export function AccountSection() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-password">{messages.settings.newPassword}</Label>
+          <Label htmlFor="new-password">{t.settings.newPassword}</Label>
           <Input
             id="new-password"
             type="password"
@@ -81,7 +82,7 @@ export function AccountSection() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirm-new-password">{messages.settings.confirmNewPassword}</Label>
+          <Label htmlFor="confirm-new-password">{t.settings.confirmNewPassword}</Label>
           <Input
             id="confirm-new-password"
             type="password"
@@ -95,7 +96,7 @@ export function AccountSection() {
         </div>
 
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? messages.common.working : messages.settings.changePassword}
+          {isSubmitting ? t.common.working : t.settings.changePassword}
         </Button>
       </form>
 

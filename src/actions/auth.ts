@@ -2,9 +2,9 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { backendFetch } from '@/lib/api/server'
-import { messages } from '@/lib/messages'
+import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
-import { loginSchema, registerSchema } from '@/lib/validation'
+import { buildValidationSchemas } from '@/lib/validation'
 
 interface AuthTokenResponse {
   token?: string
@@ -16,15 +16,18 @@ export type AuthActionResult =
   | { success: false; error: string; fieldErrors?: Record<string, string[]> }
 
 export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
+  const t = await getServerMessages()
+  const { loginSchema } = buildValidationSchemas(t.validation)
+
   if (await isDevOfflineMockEnabled()) {
-    return { success: false, error: messages.offline.actionUnavailable }
+    return { success: false, error: t.offline.actionUnavailable }
   }
 
   const parsed = loginSchema.safeParse(rawData)
   if (!parsed.success) {
     return {
       success: false,
-      error: messages.auth.errors.validationFailed,
+      error: t.auth.errors.validationFailed,
       fieldErrors: parsed.error.flatten().fieldErrors,
     }
   }
@@ -37,17 +40,17 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
       body: parsed.data,
     })
   } catch {
-    return { success: false, error: messages.offline.actionUnavailable }
+    return { success: false, error: t.offline.actionUnavailable }
   }
 
   if (!res.ok) {
-    return { success: false, error: messages.auth.errors.invalidCredentials }
+    return { success: false, error: t.auth.errors.invalidCredentials }
   }
 
   const authResponse = (await res.json()) as AuthTokenResponse
   const token = authResponse.token ?? authResponse.access_token
   if (!token) {
-    return { success: false, error: messages.auth.errors.genericServerError }
+    return { success: false, error: t.auth.errors.genericServerError }
   }
 
   const cookieStore = await cookies()
@@ -63,15 +66,18 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
 }
 
 export async function registerUser(rawData: unknown): Promise<AuthActionResult> {
+  const t = await getServerMessages()
+  const { registerSchema } = buildValidationSchemas(t.validation)
+
   if (await isDevOfflineMockEnabled()) {
-    return { success: false, error: messages.offline.actionUnavailable }
+    return { success: false, error: t.offline.actionUnavailable }
   }
 
   const parsed = registerSchema.safeParse(rawData)
   if (!parsed.success) {
     return {
       success: false,
-      error: messages.auth.errors.validationFailed,
+      error: t.auth.errors.validationFailed,
       fieldErrors: parsed.error.flatten().fieldErrors,
     }
   }
@@ -88,17 +94,17 @@ export async function registerUser(rawData: unknown): Promise<AuthActionResult> 
       },
     })
   } catch {
-    return { success: false, error: messages.offline.actionUnavailable }
+    return { success: false, error: t.offline.actionUnavailable }
   }
 
   if (!res.ok) {
-    return { success: false, error: messages.auth.errors.registrationFailed }
+    return { success: false, error: t.auth.errors.registrationFailed }
   }
 
   const authResponse = (await res.json()) as AuthTokenResponse
   const token = authResponse.token ?? authResponse.access_token
   if (!token) {
-    return { success: false, error: messages.auth.errors.genericServerError }
+    return { success: false, error: t.auth.errors.genericServerError }
   }
 
   const cookieStore = await cookies()

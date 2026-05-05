@@ -1,7 +1,7 @@
 import { backendFetchJson } from '@/lib/api/server'
+import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
-import { OFFLINE_DAILY_PHRASE } from '@/lib/mock/offlineContent'
-import type { Task, TaskGroup, Tag } from '@/types'
+import type { Task } from '@/types'
 import { DashboardClient } from '@/components/dashboard/DashboardClient'
 
 export interface ActivityEntry {
@@ -17,22 +17,6 @@ interface DailyPhraseResponse {
 async function fetchTasks(): Promise<Task[]> {
   try {
     return await backendFetchJson<Task[]>('/tasks')
-  } catch {
-    return []
-  }
-}
-
-async function fetchGroups(): Promise<TaskGroup[]> {
-  try {
-    return await backendFetchJson<TaskGroup[]>('/groups')
-  } catch {
-    return []
-  }
-}
-
-async function fetchTags(): Promise<Tag[]> {
-  try {
-    return await backendFetchJson<Tag[]>('/tags')
   } catch {
     return []
   }
@@ -56,14 +40,14 @@ async function fetchDailyPhrase(): Promise<DailyPhraseResponse | null> {
 
 export default async function DashboardPage() {
   const isOfflineMock = await isDevOfflineMockEnabled()
+  const serverMessages = await getServerMessages()
+  const phraseFallback = serverMessages.offline.fallbackDailyPhrase
 
-  const [tasks, groups, tags, phraseData, activityData] = await Promise.all([
+  const [tasks, phraseData, activityData] = await Promise.all([
     isOfflineMock ? [] : fetchTasks(),
-    isOfflineMock ? [] : fetchGroups(),
-    isOfflineMock ? [] : fetchTags(),
     isOfflineMock
-      ? { text: OFFLINE_DAILY_PHRASE.text, attribution: undefined }
-      : (await fetchDailyPhrase()) ?? { text: OFFLINE_DAILY_PHRASE.text, attribution: undefined },
+      ? { text: phraseFallback, attribution: undefined }
+      : (await fetchDailyPhrase()) ?? { text: phraseFallback, attribution: undefined },
     isOfflineMock ? [] : fetchActivity(),
   ])
 
@@ -71,8 +55,6 @@ export default async function DashboardPage() {
     <main className="flex flex-col h-full overflow-y-auto">
       <DashboardClient
         tasks={tasks}
-        groups={groups}
-        tags={tags}
         phrase={phraseData.text}
         attribution={phraseData.attribution}
         activityData={activityData}

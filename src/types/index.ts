@@ -47,7 +47,7 @@ export interface TaskGroup {
 }
 
 export interface UserPreferences {
-  language: 'en' | 'pl'
+  language: 'en-US' | 'pl-PL'
 }
 
 export interface User {

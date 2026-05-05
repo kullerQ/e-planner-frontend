@@ -1,9 +1,9 @@
 'use client'
-import { useState, useTransition, useRef } from 'react'
+import { useMemo, useState, useTransition, useRef } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Calendar01Icon, Tick02Icon, Clock01Icon, AlertCircleIcon, Delete02Icon, Tick01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import type { Task, TaskStatus } from '@/types'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { updateTaskStatus, softDeleteTask } from '@/actions/tasks'
@@ -56,37 +56,45 @@ function hasTime(dueDate: string): boolean {
   return d.getHours() !== 0 || d.getMinutes() !== 0 || d.getSeconds() !== 0
 }
 
-function formatTaskTime(dueDate: string): string | null {
+function formatTaskTime(dueDate: string, locale: string): string | null {
   if (!hasTime(dueDate)) return null
   const d = new Date(dueDate)
-  return d.toLocaleTimeString('en-US', {
+  return d.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   })
 }
 
-function formatTaskDate(dueDate: string): string {
+function formatTaskDate(dueDate: string, locale: string): string {
   const d = new Date(dueDate)
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
   })
 }
 
-const STATUS_META: Record<
-  TaskStatus,
-  { label: string; dot: string; text: string }
-> = {
-  todo: { label: 'To do', dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
-  in_progress: { label: 'In progress', dot: 'bg-primary', text: 'text-primary' },
-  delayed: { label: 'Delayed', dot: 'bg-amber-500', text: 'text-amber-500' },
-  completed: { label: 'Completed', dot: 'bg-primary/60', text: 'text-primary/80' },
+const STATUS_STYLE: Record<TaskStatus, { dot: string; text: string }> = {
+  todo: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
+  in_progress: { dot: 'bg-primary', text: 'text-primary' },
+  delayed: { dot: 'bg-amber-500', text: 'text-amber-500' },
+  completed: { dot: 'bg-primary/60', text: 'text-primary/80' },
 }
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'delayed', 'completed']
 
 export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, onRefresh }: TodaysTasksWidgetProps) {
+  const { t, locale } = useI18n()
+
+  const statusMeta = useMemo(
+    (): Record<TaskStatus, { label: string; dot: string; text: string }> => ({
+      todo: { label: t.tasks.status.todo, ...STATUS_STYLE.todo },
+      in_progress: { label: t.tasks.status.in_progress, ...STATUS_STYLE.in_progress },
+      delayed: { label: t.tasks.status.delayed, ...STATUS_STYLE.delayed },
+      completed: { label: t.tasks.status.completed, ...STATUS_STYLE.completed },
+    }),
+    [t.tasks.status],
+  )
   const open = useTaskSheetStore((s) => s.open)
   const [isPending, startTransition] = useTransition()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -157,7 +165,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
     <div className="flex h-full flex-col gap-3 overflow-hidden">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{messages.widgets.todaysTasks.title}</span>
+          <span className="text-sm font-semibold text-foreground">{t.widgets.todaysTasks.title}</span>
           {!allDone && todaysTasks.length > 0 && (
             <span className="inline-flex items-center justify-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary min-w-[20px]">
               {todaysTasks.length}
@@ -166,7 +174,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
         </div>
         {allDone && (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-            {messages.widgets.todaysTasks.allDone}
+            {t.widgets.todaysTasks.allDone}
             <HugeiconsIcon icon={Tick02Icon} size={12} />
           </span>
         )}
@@ -177,17 +185,17 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/60">
             <HugeiconsIcon icon={Calendar01Icon} size={18} className="opacity-60" />
           </div>
-          <span className="text-xs">{messages.widgets.todaysTasks.nothingDue}</span>
+          <span className="text-xs">{t.widgets.todaysTasks.nothingDue}</span>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin pr-1 -mr-1">
           {todaysTasks.map((task) => {
-            const meta = STATUS_META[task.status]
+            const meta = statusMeta[task.status]
             const isTaskToday = isToday(task)
             const overdue = isOverdue(task)
-            const time = isTaskToday && task.dueDate ? formatTaskTime(task.dueDate) : null
+            const time = isTaskToday && task.dueDate ? formatTaskTime(task.dueDate, locale) : null
             const allDay = isTaskToday && task.dueDate && !hasTime(task.dueDate) ? 'ALL DAY' : null
-            const date = overdue && task.dueDate ? formatTaskDate(task.dueDate) : null
+            const date = overdue && task.dueDate ? formatTaskDate(task.dueDate, locale) : null
             const isDeleting = deletingId === task.id
             return (
               <div
@@ -212,7 +220,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                   {/* Row 1: [emoji] title */}
                   <div className="flex items-center gap-2 min-w-0">
                     {overdue && (
-                      <span aria-label={messages.widgets.todaysTasks.overdue} className="shrink-0 text-xs leading-none">
+                      <span aria-label={t.widgets.todaysTasks.overdue} className="shrink-0 text-xs leading-none">
                         😢
                       </span>
                     )}
@@ -252,7 +260,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                         onClick={(e) => e.stopPropagation()}
                       >
                         {STATUS_ORDER.map((s) => {
-                          const sm = STATUS_META[s]
+                          const sm = statusMeta[s]
                           const isActive = task.status === s
                           return (
                             <button
@@ -323,8 +331,8 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                       'opacity-0 group-hover/task:opacity-100 focus:opacity-100',
                       (isDeleting || isPending) && 'opacity-50 cursor-not-allowed',
                     )}
-                    title={messages.widgets.todaysTasks.moveToRecycleBin}
-                    aria-label={messages.widgets.todaysTasks.deleteAria}
+                    title={t.widgets.todaysTasks.moveToRecycleBin}
+                    aria-label={t.widgets.todaysTasks.deleteAria}
                   >
                     <HugeiconsIcon icon={Delete02Icon} size={14} />
                   </button>

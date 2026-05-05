@@ -1,20 +1,20 @@
 'use server'
 
+import { cache } from 'react'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { backendFetch } from '@/lib/api/server'
-import { colorHexSchema, groupNameSchema } from '@/lib/validation'
-import { randomGroupColor } from '@/lib/utils'
+import { getServerMessages } from '@/lib/i18n/server'
+import { buildValidationSchemas } from '@/lib/validation'
 import type { TaskGroup } from '@/types'
 
 const groupIdSchema = z.string().min(1, 'Group id is required')
 
-const createGroupSchema = z.object({
-  name: groupNameSchema,
-  colorHex: colorHexSchema,
-})
-
 const reorderGroupsSchema = z.array(z.string().min(1))
+
+const getGroupFieldSchemas = cache(async () =>
+  buildValidationSchemas((await getServerMessages()).validation)
+)
 
 async function assertResponse(res: Response, action: string): Promise<void> {
   if (!res.ok) {
@@ -23,6 +23,11 @@ async function assertResponse(res: Response, action: string): Promise<void> {
 }
 
 export async function createGroup(rawData: unknown): Promise<TaskGroup> {
+  const { groupNameSchema, colorHexSchema } = await getGroupFieldSchemas()
+  const createGroupSchema = z.object({
+    name: groupNameSchema,
+    colorHex: colorHexSchema,
+  })
   const parsed = createGroupSchema.safeParse(rawData)
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid group data')
@@ -46,6 +51,7 @@ export async function renameGroup(groupId: string, name: string): Promise<void> 
     throw new Error('Invalid group id')
   }
 
+  const { groupNameSchema } = await getGroupFieldSchemas()
   const parsedName = groupNameSchema.safeParse(name)
   if (!parsedName.success) {
     throw new Error(parsedName.error.issues[0]?.message ?? 'Invalid group name')
@@ -66,6 +72,7 @@ export async function updateGroupColor(groupId: string, colorHex: string): Promi
     throw new Error('Invalid group id')
   }
 
+  const { colorHexSchema } = await getGroupFieldSchemas()
   const parsedColor = colorHexSchema.safeParse(colorHex)
   if (!parsedColor.success) {
     throw new Error('Invalid color value')

@@ -2,13 +2,13 @@
 
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { cn } from '@/lib/utils'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Sun02Icon, Moon02Icon, ComputerIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import type { User } from '@/types'
+import type { Locale } from '@/lib/i18n'
 import {
   Select,
   SelectContent,
@@ -24,33 +24,39 @@ interface AppearanceSectionProps {
 
 export function AppearanceSection({ user }: AppearanceSectionProps) {
   const { theme, setTheme, resolvedTheme } = useTheme()
+  const { t, setLocale } = useI18n()
   const [mounted, setMounted] = useState(false)
-  const [language, setLanguage] = useState<'en' | 'pl'>(user.preferences?.language ?? 'en')
+  const [language, setLanguage] = useState<Locale>(user.preferences?.language ?? 'en-US')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
-    setLanguage(user.preferences?.language ?? 'en')
+    setLanguage(user.preferences?.language ?? 'en-US')
   }, [user.preferences?.language])
 
-  const handleLanguageChange = useCallback(async (value: 'en' | 'pl') => {
+  const handleLanguageChange = useCallback(async (value: Locale) => {
     if (value === language) return
     setLanguage(value)
     setSaveStatus('saving')
+
+    // Update locale dynamically for immediate UI feedback
+    await setLocale(value)
+
+    // Persist to server
     const result = await updateLanguagePreference({ language: value })
     if (result.success) {
       setSaveStatus('saved')
-      router.refresh()
+      // Store in localStorage to sync across tabs
+      localStorage.setItem('eplanner-locale', value)
     } else {
       setSaveStatus('error')
-      setLanguage(user.preferences?.language ?? 'en')
+      setLanguage(user.preferences?.language ?? 'en-US')
     }
     setTimeout(() => setSaveStatus('idle'), 2000)
-  }, [language, user.preferences?.language, router])
+  }, [language, user.preferences?.language, setLocale])
 
   if (!mounted) {
     return null
@@ -62,13 +68,13 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
     <div className="space-y-8 max-w-xl">
       <div className="space-y-2">
         <h2 className="text-base font-medium text-foreground mb-4">
-          {messages.settings.appearance}
+          {t.settings.appearance}
         </h2>
       </div>
 
       {/* Theme Toggle */}
       <div className="space-y-3">
-        <Label>{messages.settings.theme}</Label>
+        <Label>{t.settings.theme}</Label>
         <div className="flex gap-2">
           <Button
             variant={currentTheme === 'light' ? 'default' : 'outline'}
@@ -80,7 +86,7 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
             )}
           >
             <HugeiconsIcon icon={Sun02Icon} size={16} />
-            {messages.settings.themeLight}
+            {t.settings.themeLight}
           </Button>
           <Button
             variant={currentTheme === 'dark' ? 'default' : 'outline'}
@@ -92,7 +98,7 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
             )}
           >
             <HugeiconsIcon icon={Moon02Icon} size={16} />
-            {messages.settings.themeDark}
+            {t.settings.themeDark}
           </Button>
           <Button
             variant={currentTheme === 'system' ? 'default' : 'outline'}
@@ -104,7 +110,7 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
             )}
           >
             <HugeiconsIcon icon={ComputerIcon} size={16} />
-            {messages.settings.themeSystem}
+            {t.settings.themeSystem}
           </Button>
         </div>
         {resolvedTheme && theme === 'system' && (
@@ -116,7 +122,7 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
 
       {/* Language Selector */}
       <div className="space-y-3">
-        <Label>{messages.settings.language}</Label>
+        <Label>{t.settings.language}</Label>
         <div className="flex items-center gap-3">
           <Select
             value={language}
@@ -127,8 +133,8 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="en">{messages.settings.languageEnglish}</SelectItem>
-              <SelectItem value="pl">{messages.settings.languagePolish}</SelectItem>
+              <SelectItem value="en-US">{t.settings.languageEnglish}</SelectItem>
+              <SelectItem value="pl-PL">{t.settings.languagePolish}</SelectItem>
             </SelectContent>
           </Select>
           {saveStatus === 'saved' && (
@@ -136,7 +142,7 @@ export function AppearanceSection({ user }: AppearanceSectionProps) {
           )}
         </div>
         {saveStatus === 'error' && (
-          <p className="text-sm text-destructive">{messages.settings.saveError}</p>
+          <p className="text-sm text-destructive">{t.settings.saveError}</p>
         )}
       </div>
 

@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { updateName, updateEmail } from '@/actions/settings'
 import type { User } from '@/types'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -15,6 +15,7 @@ interface ProfileSectionProps {
 }
 
 export function ProfileSection({ user }: ProfileSectionProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [name, setName] = useState(user.name)
   const [email, setEmail] = useState(user.email)
@@ -46,13 +47,13 @@ export function ProfileSection({ user }: ProfileSectionProps) {
     <div className="space-y-6 max-w-xl">
       <div className="space-y-2">
         <h2 className="text-base font-medium text-foreground mb-4">
-          {messages.settings.profile}
+          {t.settings.profile}
         </h2>
       </div>
 
       {/* Display Name */}
       <div className="space-y-2">
-        <Label htmlFor="display-name">{messages.settings.displayName}</Label>
+        <Label htmlFor="display-name">{t.settings.displayName}</Label>
         <div className="relative">
           <Input
             id="display-name"
@@ -71,7 +72,7 @@ export function ProfileSection({ user }: ProfileSectionProps) {
 
       {/* Email */}
       <div className="space-y-2">
-        <Label htmlFor="email">{messages.settings.email}</Label>
+        <Label htmlFor="email">{t.settings.email}</Label>
         <div className="relative">
           <Input
             id="email"
@@ -90,7 +91,7 @@ export function ProfileSection({ user }: ProfileSectionProps) {
       </div>
 
       {(nameSaveStatus === 'error' || emailSaveStatus === 'error') && (
-        <p className="text-sm text-destructive">{messages.settings.saveError}</p>
+        <p className="text-sm text-destructive">{t.settings.saveError}</p>
       )}
     </div>
   )

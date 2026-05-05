@@ -1,4 +1,4 @@
-import { messages } from '@/lib/messages'
+import { getServerMessages } from '@/lib/i18n/server'
 import { OFFLINE_USER } from '@/lib/mock/offlineUser'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import { backendFetch } from '@/lib/api/server'
@@ -16,6 +16,7 @@ async function getUser(): Promise<User | null> {
 }
 
 export default async function SettingsPage() {
+  const messages = await getServerMessages()
   const isOfflineMock = await isDevOfflineMockEnabled()
   const user = isOfflineMock
     ? OFFLINE_USER
@@ -25,7 +26,7 @@ export default async function SettingsPage() {
     return (
       <main className="p-6">
         <h1 className="text-2xl font-semibold text-foreground">{messages.settings.title}</h1>
-        <p className="mt-4 text-muted-foreground">Failed to load user profile.</p>
+        <p className="mt-4 text-muted-foreground">{messages.settings.profileLoadError}</p>
       </main>
     )
   }

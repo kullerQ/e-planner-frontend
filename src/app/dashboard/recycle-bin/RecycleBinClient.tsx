@@ -11,7 +11,7 @@ import {
 } from '@/actions/recycle-bin'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { cn, daysUntil, relativeTime } from '@/lib/utils'
 import type { Task } from '@/types'
 
@@ -21,7 +21,8 @@ interface RecycleBinClientProps {
 
 export function RecycleBinClient({ tasks }: RecycleBinClientProps) {
   const router = useRouter()
-  const recycleMessages = messages.dashboard.recycleBin
+  const { t, locale } = useI18n()
+  const recycleMessages = t.dashboard.recycleBin
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false)
   const [isPending, setIsPending] = useState(false)
@@ -108,7 +109,7 @@ export function RecycleBinClient({ tasks }: RecycleBinClientProps) {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="text-xs text-muted-foreground">
                       {recycleMessages.deletedLabel}{' '}
-                      {task.deletedAt ? relativeTime(task.deletedAt) : 'unknown'}
+                      {task.deletedAt ? relativeTime(task.deletedAt, locale) : recycleMessages.deletedAtUnknown}
                     </span>
                     {task.deletedAutoAt ? (
                       <span
@@ -117,7 +118,7 @@ export function RecycleBinClient({ tasks }: RecycleBinClientProps) {
                           isUrgentDelete ? 'text-destructive' : undefined
                         )}
                       >
-                        {recycleMessages.autoDeletesLabel} {daysUntil(task.deletedAutoAt)}
+                        {recycleMessages.autoDeletesLabel} {daysUntil(task.deletedAutoAt, locale)}
                       </span>
                     ) : null}
                   </div>

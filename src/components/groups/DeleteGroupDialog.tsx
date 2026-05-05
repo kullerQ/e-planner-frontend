@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { deleteGroupAndUngroup, deleteGroupWithTasks } from '@/actions/groups'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { toast } from 'sonner'
 
 interface DeleteGroupDialogProps {
@@ -29,6 +29,7 @@ export function DeleteGroupDialog({
   onOpenChange,
   onDeleted,
 }: DeleteGroupDialogProps) {
+  const { t } = useI18n()
   const [isPending, setIsPending] = useState(false)
   const [pendingAction, setPendingAction] = useState<'ungroup' | 'delete' | null>(null)
 
@@ -40,11 +41,11 @@ export function DeleteGroupDialog({
 
     try {
       await deleteGroupAndUngroup(groupId)
-      toast.success(messages.dashboard.folders.deletedWithUngroupSuccess)
+      toast.success(t.dashboard.folders.deletedWithUngroupSuccess)
       onDeleted?.()
       onOpenChange(false)
     } catch (error) {
-      const message = error instanceof Error ? error.message : messages.dashboard.folders.deleteError
+      const message = error instanceof Error ? error.message : t.dashboard.folders.deleteError
       toast.error(message)
     } finally {
       setIsPending(false)
@@ -60,11 +61,11 @@ export function DeleteGroupDialog({
 
     try {
       await deleteGroupWithTasks(groupId)
-      toast.success(messages.dashboard.folders.deletedWithTasksSuccess)
+      toast.success(t.dashboard.folders.deletedWithTasksSuccess)
       onDeleted?.()
       onOpenChange(false)
     } catch (error) {
-      const message = error instanceof Error ? error.message : messages.dashboard.folders.deleteError
+      const message = error instanceof Error ? error.message : t.dashboard.folders.deleteError
       toast.error(message)
     } finally {
       setIsPending(false)
@@ -76,9 +77,9 @@ export function DeleteGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{messages.dashboard.folders.deleteDialog.title.replace('{name}', groupName)}</DialogTitle>
+          <DialogTitle>{t.dashboard.folders.deleteDialog.title.replace('{name}', groupName)}</DialogTitle>
           <DialogDescription>
-            {messages.dashboard.folders.deleteDialog.description}
+            {t.dashboard.folders.deleteDialog.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,10 +91,10 @@ export function DeleteGroupDialog({
           >
             <div className="flex flex-col gap-1">
               <span className="font-medium text-foreground">
-                {pendingAction === 'ungroup' ? messages.dashboard.folders.deleteDialog.movingTasks : messages.dashboard.folders.deleteDialog.moveToUngrouped}
+                {pendingAction === 'ungroup' ? t.dashboard.folders.deleteDialog.movingTasks : t.dashboard.folders.deleteDialog.moveToUngrouped}
               </span>
               <span className="text-sm text-muted-foreground leading-relaxed">
-                {messages.dashboard.folders.deleteDialog.moveToUngroupedDescription}
+                {t.dashboard.folders.deleteDialog.moveToUngroupedDescription}
               </span>
             </div>
           </button>
@@ -105,10 +106,10 @@ export function DeleteGroupDialog({
           >
             <div className="flex flex-col gap-1">
               <span className="font-medium text-destructive">
-                {pendingAction === 'delete' ? messages.dashboard.folders.deleteDialog.deleting : messages.dashboard.folders.deleteDialog.deleteAllTasks}
+                {pendingAction === 'delete' ? t.dashboard.folders.deleteDialog.deleting : t.dashboard.folders.deleteDialog.deleteAllTasks}
               </span>
               <span className="text-sm text-muted-foreground leading-relaxed">
-                {messages.dashboard.folders.deleteDialog.deleteAllTasksDescription}
+                {t.dashboard.folders.deleteDialog.deleteAllTasksDescription}
               </span>
             </div>
           </button>
@@ -116,7 +117,7 @@ export function DeleteGroupDialog({
 
         <DialogFooter>
           <Button variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
-            {messages.dashboard.folders.deleteDialog.cancel}
+            {t.dashboard.folders.deleteDialog.cancel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,12 +1,12 @@
 export const messages = {
   meta: {
     title: 'E-Planner',
-    description: 'Plan your day with focus.',
+    description: 'Manage your time.',
   },
   home: {
-    heading: 'Plan with clarity',
+    heading: 'Plan your day',
     description:
-      'E-Planner helps you organize tasks, manage priorities, and keep momentum every day.',
+      'E-Planner helps you organize tasks and manage your time better.',
     loginCta: 'Sign in',
     registerCta: 'Create account',
   },
@@ -57,6 +57,7 @@ export const messages = {
       list: 'List',
       calendar: 'Calendar',
       folders: 'Folders',
+      newTask: 'New task',
       recycleBin: 'Recycle Bin',
       settings: 'Settings',
     },
@@ -85,12 +86,21 @@ export const messages = {
       permanentDeleteDescription: 'This cannot be undone.',
       permanentDeleteAction: 'Delete Permanently',
       emptyAllDescription: 'Permanently delete all {count} tasks? This cannot be undone.',
+      deletedAtUnknown: 'unknown',
     },
     tasks: {
       title: 'List',
       searchPlaceholder: 'Search tasks',
       empty: 'No tasks found',
       connectionHint: 'Task list is connected to backend data.',
+    },
+    calendar: {
+      today: 'Today',
+      viewDay: 'Day',
+      viewWeek: 'Week',
+      viewMonth: 'Month',
+      previousPeriod: 'Previous period',
+      nextPeriod: 'Next period',
     },
     folders: {
       title: 'Folders',
@@ -125,6 +135,7 @@ export const messages = {
         deleting: 'Deleting...',
         cancel: 'Cancel',
       },
+      foldersLoadError: 'Unable to load folders. Please check your connection.',
     },
     offline: {
       tasks: 'No tasks available in offline mode',
@@ -206,6 +217,9 @@ export const messages = {
     tagNameRequired: 'Tag name is required.',
     tagRenameError: 'Could not rename tag.',
     tagDeleteError: 'Could not delete tag.',
+    markTodoToggleAria: 'Mark as to do',
+    markCompletedToggleAria: 'Mark as completed',
+    statusUpdateFailed: 'Failed to update task status',
   },
   taskList: {
     newTaskButton: '[+ New Task]',
@@ -354,6 +368,10 @@ export const messages = {
     deleteAccountConfirm: 'Delete Account',
     deleteAccountCancel: 'Cancel',
     accountDeleted: 'Account deleted',
+    profileLoadError: 'Failed to load user profile.',
+    currentPasswordRequired: 'Current password is required',
+    confirmNewPasswordRequired: 'Please confirm your new password',
+    deleteAccountError: 'Failed to delete account',
   },
   taskRow: {
     updateStatus: 'Update task status',

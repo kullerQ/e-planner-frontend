@@ -1,13 +1,13 @@
 'use client'
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { registerUser } from '@/actions/auth'
-import { messages } from '@/lib/messages'
-import { registerSchema } from '@/lib/validation'
+import { buildValidationSchemas } from '@/lib/validation'
+import { useI18n } from '@/lib/messages'
 
 type FieldErrors = {
   name?: string
@@ -17,7 +17,12 @@ type FieldErrors = {
 }
 
 export default function RegisterPage() {
-  const authMessages = messages.auth
+  const { t } = useI18n()
+  const authMessages = t.auth
+  const registerSchema = useMemo(
+    () => buildValidationSchemas(t.validation).registerSchema,
+    [t.validation],
+  )
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

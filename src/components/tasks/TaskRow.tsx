@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowDown01Icon, Calendar03Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
@@ -8,7 +8,7 @@ import { updateTaskStatus } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatDueDate, isDueSoon, isOverdue } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { useSelectionStore } from '@/stores/useSelectionStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import type { Task, TaskGroup, TaskStatus } from '@/types'
@@ -20,13 +20,6 @@ interface TaskRowProps {
   searchQuery: string
   onTaskStatusOptimistic?: (taskId: string, status: TaskStatus) => void
 }
-
-const statusOptions: Array<{ value: TaskStatus; label: string }> = [
-  { value: 'todo', label: 'To do' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'delayed', label: 'Delayed' },
-  { value: 'completed', label: 'Completed' },
-]
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -59,6 +52,17 @@ export function TaskRow({
   searchQuery,
   onTaskStatusOptimistic,
 }: TaskRowProps) {
+  const { t, locale } = useI18n()
+
+  const statusOptions = useMemo(
+    (): Array<{ value: TaskStatus; label: string }> => [
+      { value: 'todo', label: t.tasks.status.todo },
+      { value: 'in_progress', label: t.tasks.status.in_progress },
+      { value: 'delayed', label: t.tasks.status.delayed },
+      { value: 'completed', label: t.tasks.status.completed },
+    ],
+    [t.tasks.status],
+  )
   const openTaskSheet = useTaskSheetStore((state) => state.open)
   const statusOverride = useTaskSheetStore((state) => state.statusOverrides[task.id])
   const setStatusOverride = useTaskSheetStore((state) => state.setStatusOverride)
@@ -103,8 +107,8 @@ export function TaskRow({
       } catch {
         setStatusOverride(task.id, previousStatus)
         onTaskStatusOptimistic?.(task.id, previousStatus)
-        setStatusError('Status update failed. Please try again.')
-        toast.error('Failed to update task status')
+        setStatusError(t.tasks.statusUpdateFailed)
+        toast.error(t.tasks.statusUpdateFailed)
       }
     })
   }
@@ -153,7 +157,11 @@ export function TaskRow({
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
             displayStatus === 'completed' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
         )}
-        aria-label={displayStatus === 'completed' ? 'Mark as to do' : 'Mark as completed'}
+        aria-label={
+          displayStatus === 'completed'
+            ? t.tasks.markTodoToggleAria
+            : t.tasks.markCompletedToggleAria
+        }
       >
         <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />
       </button>
@@ -192,7 +200,11 @@ export function TaskRow({
         )}
       >
         <HugeiconsIcon icon={Calendar03Icon} size={12} />
-        {task.dueDate !== null ? <span>{formatDueDate(task.dueDate)}</span> : <span>No due date</span>}
+        {task.dueDate !== null ? (
+          <span>{formatDueDate(task.dueDate, locale)}</span>
+        ) : (
+          <span>{t.tasks.dueDateEmpty}</span>
+        )}
       </div>
 
       <div className="flex flex-col items-end" onClick={(event) => event.stopPropagation()}>
@@ -204,7 +216,7 @@ export function TaskRow({
                 'group/status min-h-11 min-w-11 inline-flex items-center justify-center rounded-sm cursor-pointer',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
               )}
-              aria-label={messages.taskRow.updateStatus}
+              aria-label={t.taskRow.updateStatus}
             >
               <StatusBadge
                 status={displayStatus}

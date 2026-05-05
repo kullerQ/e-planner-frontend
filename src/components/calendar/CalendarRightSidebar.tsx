@@ -8,7 +8,7 @@ import { useCalendarVisibilityStore } from '@/stores/useCalendarVisibilityStore'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { createGroup } from '@/actions/groups'
 import { cn, randomGroupColor } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { toast } from 'sonner'
 import type { WeekStartsOn } from '@/lib/preferences'
 
@@ -33,6 +33,7 @@ export function CalendarRightSidebar({
   onPrevMonth,
   onNextMonth,
 }: CalendarRightSidebarProps) {
+  const { t } = useI18n()
   const { hiddenGroupIds, toggleGroup } = useCalendarVisibilityStore()
   const { groups, addGroup } = useGroupsStore()
 
@@ -56,16 +57,16 @@ export function CalendarRightSidebar({
     try {
       const group = await createGroup({ name, colorHex: randomGroupColor() })
       addGroup(group)
-      toast.success(messages.dashboard.folders.createdSuccess)
+      toast.success(t.dashboard.folders.createdSuccess)
     } catch {
-      toast.error(messages.dashboard.folders.createError)
+      toast.error(t.dashboard.folders.createError)
     } finally {
       setIsSubmitting(false)
       setIsCreating(false)
       setNewFolderName('')
       hasSubmittedRef.current = false
     }
-  }, [newFolderName, addGroup, isSubmitting])
+  }, [newFolderName, addGroup, isSubmitting, t])
 
   const handleNewFolderKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -104,7 +105,7 @@ export function CalendarRightSidebar({
       {/* Folder visibility */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 pt-4 pb-2">
-          Folders
+          {t.dashboard.folders.title}
         </p>
 
         <div className="flex-1 overflow-y-auto">
@@ -152,7 +153,7 @@ export function CalendarRightSidebar({
                 }
               }}
               disabled={isSubmitting}
-              placeholder={messages.dashboard.folders.newFolderPlaceholder}
+              placeholder={t.dashboard.folders.newFolderPlaceholder}
               className={cn(
                 'w-full text-sm bg-transparent border border-border rounded px-2 py-1',
                 'focus:outline-none focus:ring-1 focus:ring-ring',
@@ -166,7 +167,7 @@ export function CalendarRightSidebar({
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <HugeiconsIcon icon={Add01Icon} size={14} />
-              [New Folder]
+              {t.folders.newFolder}
             </button>
           )}
         </div>

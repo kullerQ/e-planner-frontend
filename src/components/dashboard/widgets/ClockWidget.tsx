@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/messages'
 
 function formatTime(date: Date): { hhmm: string; seconds: string } {
   const hours = date.getHours().toString().padStart(2, '0')
@@ -8,15 +9,16 @@ function formatTime(date: Date): { hhmm: string; seconds: string } {
   return { hhmm: `${hours}:${minutes}`, seconds }
 }
 
-function formatWeekday(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+function formatWeekday(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { weekday: 'long' })
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+function formatDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { month: 'long', day: 'numeric' })
 }
 
 export function ClockWidget() {
+  const { locale } = useI18n()
   const [now, setNow] = useState<Date | null>(null)
 
   useEffect(() => {
@@ -43,10 +45,10 @@ export function ClockWidget() {
       </div>
       <div className="flex flex-col items-center gap-0.5">
         <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground/80">
-          {now ? formatWeekday(now) : ''}
+          {now ? formatWeekday(now, locale) : ''}
         </span>
         <span className="text-xs text-muted-foreground">
-          {now ? formatDate(now) : ''}
+          {now ? formatDate(now, locale) : ''}
         </span>
       </div>
     </div>

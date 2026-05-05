@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import type { Messages } from '@/lib/i18n/types'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowDown01Icon,
@@ -29,13 +30,12 @@ import {
 } from '@/components/ui/select'
 import { BulkSelectionPanel } from '@/components/tasks/BulkSelectionPanel'
 import { TaskRow } from '@/components/tasks/TaskRow'
-import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet'
 import { ColorPickerPopover } from '@/components/shared/ColorPickerPopover'
 import { DeleteGroupDialog } from '@/components/groups/DeleteGroupDialog'
 import { renameGroup, updateGroupColor } from '@/actions/groups'
 import { filterTasks, groupTasks, sortTasks } from '@/lib/taskFilters'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import {
   type GroupByDimension,
   type SortByDimension,
@@ -53,22 +53,6 @@ interface TaskListClientProps {
   tags: Tag[]
 }
 
-const groupByOptions = [
-  { value: 'none' as const, label: messages.taskList.groupBy.none, icon: ListViewIcon },
-  { value: 'folder' as const, label: messages.taskList.groupBy.folder, icon: Folder01Icon },
-  { value: 'tag' as const, label: messages.taskList.groupBy.tag, icon: CheckmarkCircle01Icon },
-  { value: 'date' as const, label: messages.taskList.groupBy.date, icon: Calendar03Icon },
-  { value: 'status' as const, label: messages.taskList.groupBy.status, icon: InformationCircleIcon },
-]
-
-const sortByOptions = [
-  { value: 'date' as const, label: messages.taskList.sortBy.date, icon: Calendar03Icon },
-  { value: 'tag' as const, label: messages.taskList.sortBy.tag, icon: Tag01Icon },
-  { value: 'title' as const, label: messages.taskList.sortBy.title, icon: Search01Icon },
-  { value: 'created' as const, label: messages.taskList.sortBy.created, icon: Folder01Icon },
-  { value: 'status' as const, label: messages.taskList.sortBy.status, icon: InformationCircleIcon },
-]
-
 // Complexity and priority controls are intentionally hidden in the current UI.
 const HIDDEN_GROUP_BY_DIMENSIONS: ReadonlyArray<GroupByDimension> = ['priority', 'complexity']
 const HIDDEN_SORT_BY_DIMENSIONS: ReadonlyArray<SortByDimension> = ['priority', 'complexity']
@@ -84,36 +68,42 @@ function parseGroupKey(key: string): { dimension: string; value: string } {
 function getGroupLabel(
   key: string,
   groupsById: Map<string, TaskGroup>,
-  tagsById: Map<string, Tag>
+  tagsById: Map<string, Tag>,
+  taskList: Messages['taskList'],
+  taskStatus: Messages['tasks']['status'],
 ): string {
   const parsed = parseGroupKey(key)
   if (parsed.dimension === 'folder') {
     if (parsed.value === 'none') {
-      return messages.taskList.groups.ungrouped
+      return taskList.groups.ungrouped
     }
-    return groupsById.get(parsed.value)?.name ?? messages.taskList.groups.ungrouped
+    return groupsById.get(parsed.value)?.name ?? taskList.groups.ungrouped
   }
 
   if (parsed.dimension === 'tag') {
     if (parsed.value === 'none') {
-      return messages.taskList.groups.noTag
+      return taskList.groups.noTag
     }
-    return tagsById.get(parsed.value)?.name ?? messages.taskList.groups.noTag
+    return tagsById.get(parsed.value)?.name ?? taskList.groups.noTag
   }
 
   if (parsed.dimension === 'priority') {
     return parsed.value.replaceAll('_', ' ')
   }
   if (parsed.dimension === 'status') {
+    const s = parsed.value as TaskStatus
+    if (s === 'todo' || s === 'in_progress' || s === 'delayed' || s === 'completed') {
+      return taskStatus[s]
+    }
     return parsed.value.replaceAll('_', ' ')
   }
   if (parsed.dimension === 'date') {
-    if (parsed.value === 'overdue') return messages.taskList.groups.overdue
-    if (parsed.value === 'today') return messages.taskList.groups.today
-    if (parsed.value === 'upcoming') return messages.taskList.groups.upcoming
-    return messages.taskList.groups.noDueDate
+    if (parsed.value === 'overdue') return taskList.groups.overdue
+    if (parsed.value === 'today') return taskList.groups.today
+    if (parsed.value === 'upcoming') return taskList.groups.upcoming
+    return taskList.groups.noDueDate
   }
-  return messages.taskList.groups.allTasks
+  return taskList.groups.allTasks
 }
 
 function getGroupSwatchColor(key: string, groupsById: Map<string, TaskGroup>): string {
@@ -128,7 +118,28 @@ function getGroupSwatchColor(key: string, groupsById: Map<string, TaskGroup>): s
 }
 
 export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
-  const tasksMessages = messages.dashboard.tasks
+  const { t } = useI18n()
+  const tasksMessages = t.dashboard.tasks
+  const groupByOptions = useMemo(
+    () => [
+      { value: 'none' as const, label: t.taskList.groupBy.none, icon: ListViewIcon },
+      { value: 'folder' as const, label: t.taskList.groupBy.folder, icon: Folder01Icon },
+      { value: 'tag' as const, label: t.taskList.groupBy.tag, icon: CheckmarkCircle01Icon },
+      { value: 'date' as const, label: t.taskList.groupBy.date, icon: Calendar03Icon },
+      { value: 'status' as const, label: t.taskList.groupBy.status, icon: InformationCircleIcon },
+    ],
+    [t.taskList.groupBy],
+  )
+  const sortByOptions = useMemo(
+    () => [
+      { value: 'date' as const, label: t.taskList.sortBy.date, icon: Calendar03Icon },
+      { value: 'tag' as const, label: t.taskList.sortBy.tag, icon: Tag01Icon },
+      { value: 'title' as const, label: t.taskList.sortBy.title, icon: Search01Icon },
+      { value: 'created' as const, label: t.taskList.sortBy.created, icon: Folder01Icon },
+      { value: 'status' as const, label: t.taskList.sortBy.status, icon: InformationCircleIcon },
+    ],
+    [t.taskList.sortBy],
+  )
   const searchQuery = useFilterStore((state) => state.searchQuery)
   const groupBy = useFilterStore((state) => state.groupBy)
   const sortBy = useFilterStore((state) => state.sortBy)
@@ -294,7 +305,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
     } catch (error) {
       // Revert on error
       setOptimisticGroups(groups)
-      const message = error instanceof Error ? error.message : messages.dashboard.folders.renameError
+      const message = error instanceof Error ? error.message : t.dashboard.folders.renameError
       toast.error(message)
     }
   }
@@ -321,7 +332,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
     } catch (error) {
       // Revert on error
       setOptimisticGroups(groups)
-      const message = error instanceof Error ? error.message : messages.dashboard.folders.colorUpdateError
+      const message = error instanceof Error ? error.message : t.dashboard.folders.colorUpdateError
       toast.error(message)
     }
   }
@@ -349,7 +360,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
           <header className="flex items-center justify-between gap-4 pb-5 border-b border-border/50 mb-6">
             <h1 className="text-2xl font-semibold text-foreground">{tasksMessages.title}</h1>
             <Button type="button" onClick={() => openTaskSheet(null)}>
-              {messages.taskList.newTaskButton}
+              {t.taskList.newTaskButton}
             </Button>
           </header>
 
@@ -368,7 +379,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               />
               <button
                 type="button"
-                aria-label={messages.taskList.clearSearch}
+                aria-label={t.taskList.clearSearch}
                 onClick={() => setSearchQuery('')}
                 className={cn(
                   'absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-opacity',
@@ -384,12 +395,12 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               onValueChange={(value) => setGroupBy(value as GroupByDimension)}
             >
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder={messages.taskList.groupByLabel}>
+                <SelectValue placeholder={t.taskList.groupByLabel}>
                   <span className="inline-flex items-center gap-2">
                     {selectedGroupByOption ? (
                       <HugeiconsIcon icon={selectedGroupByOption.icon} size={14} className="text-muted-foreground" />
                     ) : null}
-                    <span>{selectedGroupByOption?.label ?? messages.taskList.groupByLabel}</span>
+                    <span>{selectedGroupByOption?.label ?? t.taskList.groupByLabel}</span>
                   </span>
                 </SelectValue>
               </SelectTrigger>
@@ -414,7 +425,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                   size={14}
                   className="text-muted-foreground"
                 />
-                <span>{selectedSortByOption?.label ?? messages.taskList.orderByLabel}</span>
+                <span>{selectedSortByOption?.label ?? t.taskList.orderByLabel}</span>
               </span>
               <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="text-muted-foreground" />
             </Button>
@@ -460,7 +471,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               </span>
               <span className="inline-flex items-center gap-2">
                 <HugeiconsIcon icon={SortByUp02Icon} size={14} className="text-muted-foreground" />
-                <span>{messages.taskList.ascending}</span>
+                <span>{t.taskList.ascending}</span>
               </span>
             </button>
             <button
@@ -482,7 +493,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               </span>
               <span className="inline-flex items-center gap-2">
                 <HugeiconsIcon icon={SortByDown02Icon} size={14} className="text-muted-foreground" />
-                <span>{messages.taskList.descending}</span>
+                <span>{t.taskList.descending}</span>
               </span>
             </button>
           </PopoverContent>
@@ -500,13 +511,13 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
               }}
               className="min-w-[132px] justify-center"
             >
-              {isSelecting ? messages.taskList.doneButton.replace('{count}', String(selectedIds.size)) : messages.taskList.selectButton}
+              {isSelecting ? t.taskList.doneButton.replace('{count}', String(selectedIds.size)) : t.taskList.selectButton}
             </Button>
           </section>
 
           <section className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
             {!hasHydrated ? (
-              <div className="p-6 text-sm text-muted-foreground">{messages.taskList.loading}</div>
+              <div className="p-6 text-sm text-muted-foreground">{t.taskList.loading}</div>
             ) : null}
             {hasHydrated && groupedTasks.size === 0 ? (
               <div className="p-6 text-sm text-muted-foreground">{tasksMessages.empty}</div>
@@ -519,7 +530,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                   return count + (debouncedQuery.length === 0 || matchedTaskIds.has(task.id) ? 1 : 0)
                 }, 0)
                 const shouldRenderHeader = effectiveGroupBy !== 'none'
-                const groupLabel = getGroupLabel(groupKey, groupsById, tagsById)
+                const groupLabel = getGroupLabel(groupKey, groupsById, tagsById, t.taskList, t.tasks.status)
                 const groupColor = getGroupSwatchColor(groupKey, groupsById)
                 const shouldRenderFolderActions =
                   parsedGroupKey.dimension === 'folder' &&
@@ -548,7 +559,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                               onBlur={() => currentGroup && submitRename(currentGroup.id)}
                               className="h-8 text-sm flex-1"
                               autoFocus
-                              aria-label={messages.dashboard.folders.aria.renameInput}
+                              aria-label={t.dashboard.folders.aria.renameInput}
                             />
                           </div>
                         ) : (
@@ -556,7 +567,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                             type="button"
                             onClick={() => toggleGroupCollapse(groupKey)}
                             className="flex items-center gap-2 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm px-1"
-                            aria-label={messages.taskList.groupAria.replace('{action}', isCollapsed ? messages.taskList.expandGroup : messages.taskList.collapseGroup).replace('{name}', groupLabel)}
+                            aria-label={t.taskList.groupAria.replace('{action}', isCollapsed ? t.taskList.expandGroup : t.taskList.collapseGroup).replace('{name}', groupLabel)}
                           >
                             <HugeiconsIcon
                               icon={ArrowDown01Icon}
@@ -574,7 +585,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                               <button
                                 type="button"
                                 className="min-h-11 min-w-11 inline-flex items-center justify-center text-sm text-muted-foreground rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                                aria-label={messages.taskList.groupActionsAria.replace('{name}', groupLabel)}
+                                aria-label={t.taskList.groupActionsAria.replace('{name}', groupLabel)}
                               >
                                 <HugeiconsIcon icon={MoreVerticalIcon} size={16} />
                               </button>
@@ -586,7 +597,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                                   onClick={() => startRenaming(currentGroup)}
                                   className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                 >
-                                  {messages.dashboard.folders.menu.rename}
+                                  {t.dashboard.folders.menu.rename}
                                 </button>
                                 <Popover>
                                   <PopoverTrigger asChild>
@@ -594,7 +605,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                                       type="button"
                                       className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                     >
-                                      {messages.dashboard.folders.menu.changeColor}
+                                      {t.dashboard.folders.menu.changeColor}
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent align="end" className="w-[240px] p-3">
@@ -609,7 +620,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                                   onClick={() => openDeleteDialog(currentGroup)}
                                   className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                 >
-                                  {messages.dashboard.folders.menu.delete}
+                                  {t.dashboard.folders.menu.delete}
                                 </button>
                               </div>
                             </PopoverContent>
@@ -645,7 +656,6 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
           />
         ) : null}
       </div>
-      {!isSelecting ? <TaskDetailSheet tasks={optimisticTasks} groups={optimisticGroups} tags={tags} /> : null}
 
       <DeleteGroupDialog
         groupId={deleteGroupId}

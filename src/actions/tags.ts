@@ -1,20 +1,26 @@
 'use server'
 
+import { cache } from 'react'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { backendFetch, backendFetchJson } from '@/lib/api/server'
-import { tagNameSchema } from '@/lib/validation'
+import { getServerMessages } from '@/lib/i18n/server'
+import { buildValidationSchemas } from '@/lib/validation'
 import type { Tag } from '@/types'
 
 const tagIdSchema = z.string().min(1, 'Tag id is required')
 
-const createTagSchema = z.object({
-  name: tagNameSchema,
-})
-
-const renameTagSchema = z.object({
-  id: tagIdSchema,
-  name: tagNameSchema,
+const getTagSchemas = cache(async () => {
+  const { tagNameSchema } = buildValidationSchemas((await getServerMessages()).validation)
+  return {
+    createTagSchema: z.object({
+      name: tagNameSchema,
+    }),
+    renameTagSchema: z.object({
+      id: tagIdSchema,
+      name: tagNameSchema,
+    }),
+  }
 })
 
 async function assertResponse(response: Response, action: string): Promise<void> {
@@ -35,6 +41,7 @@ export async function getTags(): Promise<Tag[]> {
 }
 
 export async function createTag(rawData: unknown): Promise<Tag> {
+  const { createTagSchema } = await getTagSchemas()
   const parsed = createTagSchema.safeParse(rawData)
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid tag name')
@@ -51,6 +58,7 @@ export async function createTag(rawData: unknown): Promise<Tag> {
 }
 
 export async function renameTag(rawData: unknown): Promise<Tag> {
+  const { renameTagSchema } = await getTagSchemas()
   const parsed = renameTagSchema.safeParse(rawData)
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid tag update payload')

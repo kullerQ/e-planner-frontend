@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { messages } from '@/lib/messages'
+import { getServerMessages } from '@/lib/i18n/server'
 
-export default function Home() {
-  const home = messages.home
+export default async function Home() {
+  const { home } = await getServerMessages()
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">

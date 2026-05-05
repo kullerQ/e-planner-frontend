@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { messages } from '@/lib/messages'
+import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 
 export default async function OfflinePage() {
-  const offlineMessages = messages.offline
+  const { offline: offlineMessages } = await getServerMessages()
   const showDevHint = await isDevOfflineMockEnabled()
 
   return (

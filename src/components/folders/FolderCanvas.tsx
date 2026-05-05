@@ -14,7 +14,7 @@ import { DeleteGroupDialog } from '@/components/groups/DeleteGroupDialog'
 import { reorderGroups, createGroup, deleteGroupAndUngroup } from '@/actions/groups'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useGroupsStore } from '@/stores/useGroupsStore'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { cn, randomGroupColor } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Task, TaskGroup } from '@/types'
@@ -36,6 +36,7 @@ interface DraftGroup {
 }
 
 export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: FolderCanvasProps) {
+  const { t } = useI18n()
   const [groups, setGroups] = useState<(TaskGroup | DraftGroup)[]>(initialGroups)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [draftGroup, setDraftGroup] = useState<DraftGroup | null>(null)
@@ -121,9 +122,9 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
       // Reorder to persist the new order
       await reorderGroups(next.map((g) => g.id))
 
-      toast.success(messages.dashboard.folders.createdSuccess)
+      toast.success(t.dashboard.folders.createdSuccess)
     } catch (error) {
-      const message = error instanceof Error ? error.message : messages.dashboard.folders.createError
+      const message = error instanceof Error ? error.message : t.dashboard.folders.createError
       toast.error(message)
     }
   }, [groups])
@@ -137,9 +138,9 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
         await deleteGroupAndUngroup(group.id)
         setGroups((current) => current.filter((g) => g.id !== group.id))
         storeRemoveGroup(group.id)
-        toast.success(messages.dashboard.folders.deletedWithUngroupSuccess)
+        toast.success(t.dashboard.folders.deletedWithUngroupSuccess)
       } catch (error) {
-        const message = error instanceof Error ? error.message : messages.dashboard.folders.deleteError
+        const message = error instanceof Error ? error.message : t.dashboard.folders.deleteError
         toast.error(message)
       }
       return
@@ -212,13 +213,13 @@ export function FolderCanvas({ groups: initialGroups, tasks: initialTasks }: Fol
       <>
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
           <HugeiconsIcon icon={Folder01Icon} size={40} className="text-muted-foreground/50" />
-          <h3 className="text-base font-medium text-foreground">{messages.folders.noFoldersYet}</h3>
+          <h3 className="text-base font-medium text-foreground">{t.folders.noFoldersYet}</h3>
           <button
             type="button"
             onClick={handleCreateClick}
             className="text-sm text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-2 py-1"
           >
-            {messages.folders.createFirstFolder}
+            {t.folders.createFirstFolder}
           </button>
         </div>
         <DeleteGroupDialog

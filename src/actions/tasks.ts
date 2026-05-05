@@ -1,13 +1,11 @@
 'use server'
 
+import { cache } from 'react'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { backendFetch } from '@/lib/api/server'
-import {
-  colorHexSchema,
-  tagNameSchema,
-  taskTitleSchema,
-} from '@/lib/validation'
+import { getServerMessages } from '@/lib/i18n/server'
+import { buildValidationSchemas } from '@/lib/validation'
 import type { TaskPriority, TaskStatus } from '@/types'
 
 const updateStatusSchema = z.object({
@@ -19,57 +17,70 @@ const taskPrioritySchema = z.enum(['critical', 'high', 'medium', 'low', 'none'])
 const taskIdSchema = z.string().min(1, 'Task id is required')
 const dueDateSchema = z.string().datetime().nullable()
 const groupIdSchema = z.string().min(1).nullable()
-const tagIdsSchema = z.array(tagNameSchema.or(z.string().min(1))).max(50)
 const notesSchema = z.string().max(50_000).nullable()
 const bulkTaskIdsSchema = z.array(taskIdSchema).min(1, 'At least one task id is required')
-const bulkGroupSchema = z.object({
-  taskIds: bulkTaskIdsSchema,
-  groupId: groupIdSchema,
-})
-const bulkPrioritySchema = z.object({
-  taskIds: bulkTaskIdsSchema,
-  priority: taskPrioritySchema,
-})
-const bulkTagsSchema = z.object({
-  taskIds: bulkTaskIdsSchema,
-  tagIds: z.array(z.string().min(1)).max(50),
-})
-const bulkDeleteSchema = z.object({
-  taskIds: bulkTaskIdsSchema,
-})
 
-const createTaskSchema = z.object({
-  title: taskTitleSchema,
-  status: taskStatusSchema.default('todo'),
-  priority: taskPrioritySchema.default('medium'),
-  dueDate: dueDateSchema.optional(),
-  groupId: groupIdSchema.optional(),
-  tagIds: tagIdsSchema.optional(),
-  notes: notesSchema.optional(),
-  colorHex: colorHexSchema.optional(),
-})
+const getTaskActionSchemas = cache(async () => {
+  const { tagNameSchema, taskTitleSchema, colorHexSchema } = buildValidationSchemas(
+    (await getServerMessages()).validation
+  )
+  const tagIdsSchema = z.array(tagNameSchema.or(z.string().min(1))).max(50)
+  const createTaskSchema = z.object({
+    title: taskTitleSchema,
+    status: taskStatusSchema.default('todo'),
+    priority: taskPrioritySchema.default('medium'),
+    dueDate: dueDateSchema.optional(),
+    groupId: groupIdSchema.optional(),
+    tagIds: tagIdsSchema.optional(),
+    notes: notesSchema.optional(),
+    colorHex: colorHexSchema.optional(),
+  })
+  const updateTaskSchema = z.object({
+    title: taskTitleSchema.optional(),
+    status: taskStatusSchema.optional(),
+    priority: taskPrioritySchema.optional(),
+    dueDate: dueDateSchema.optional(),
+    groupId: groupIdSchema.optional(),
+    tagIds: tagIdsSchema.optional(),
+    notes: notesSchema.optional(),
+    colorHex: colorHexSchema.optional(),
+  })
+  const updateTaskFieldSchema = z.discriminatedUnion('field', [
+    z.object({ field: z.literal('title'), value: taskTitleSchema }),
+    z.object({ field: z.literal('status'), value: taskStatusSchema }),
+    z.object({ field: z.literal('priority'), value: taskPrioritySchema }),
+    z.object({ field: z.literal('dueDate'), value: dueDateSchema }),
+    z.object({ field: z.literal('groupId'), value: groupIdSchema }),
+    z.object({ field: z.literal('tagIds'), value: tagIdsSchema }),
+    z.object({ field: z.literal('notes'), value: notesSchema }),
+    z.object({ field: z.literal('colorHex'), value: colorHexSchema }),
+  ])
+  const bulkGroupSchema = z.object({
+    taskIds: bulkTaskIdsSchema,
+    groupId: groupIdSchema,
+  })
+  const bulkPrioritySchema = z.object({
+    taskIds: bulkTaskIdsSchema,
+    priority: taskPrioritySchema,
+  })
+  const bulkTagsSchema = z.object({
+    taskIds: bulkTaskIdsSchema,
+    tagIds: z.array(z.string().min(1)).max(50),
+  })
+  const bulkDeleteSchema = z.object({
+    taskIds: bulkTaskIdsSchema,
+  })
 
-const updateTaskSchema = z.object({
-  title: taskTitleSchema.optional(),
-  status: taskStatusSchema.optional(),
-  priority: taskPrioritySchema.optional(),
-  dueDate: dueDateSchema.optional(),
-  groupId: groupIdSchema.optional(),
-  tagIds: tagIdsSchema.optional(),
-  notes: notesSchema.optional(),
-  colorHex: colorHexSchema.optional(),
+  return {
+    createTaskSchema,
+    updateTaskSchema,
+    updateTaskFieldSchema,
+    bulkGroupSchema,
+    bulkPrioritySchema,
+    bulkTagsSchema,
+    bulkDeleteSchema,
+  }
 })
-
-const updateTaskFieldSchema = z.discriminatedUnion('field', [
-  z.object({ field: z.literal('title'), value: taskTitleSchema }),
-  z.object({ field: z.literal('status'), value: taskStatusSchema }),
-  z.object({ field: z.literal('priority'), value: taskPrioritySchema }),
-  z.object({ field: z.literal('dueDate'), value: dueDateSchema }),
-  z.object({ field: z.literal('groupId'), value: groupIdSchema }),
-  z.object({ field: z.literal('tagIds'), value: tagIdsSchema }),
-  z.object({ field: z.literal('notes'), value: notesSchema }),
-  z.object({ field: z.literal('colorHex'), value: colorHexSchema }),
-])
 
 async function assertResponse(res: Response, action: string): Promise<void> {
   if (!res.ok) {
@@ -102,6 +113,7 @@ export async function updateTaskStatus(taskId: string, rawData: unknown): Promis
 }
 
 export async function createTask(rawData: unknown): Promise<void> {
+  const { createTaskSchema } = await getTaskActionSchemas()
   const parsed = createTaskSchema.safeParse(rawData)
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task data')
@@ -133,6 +145,7 @@ export async function updateTask(taskId: string, rawData: unknown): Promise<void
     throw new Error('Invalid task id')
   }
 
+  const { updateTaskSchema } = await getTaskActionSchemas()
   const parsed = updateTaskSchema.safeParse(rawData)
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task update payload')
@@ -152,6 +165,7 @@ export async function updateTaskField(taskId: string, field: string, value: unkn
     throw new Error('Invalid task id')
   }
 
+  const { updateTaskFieldSchema } = await getTaskActionSchemas()
   const parsed = updateTaskFieldSchema.safeParse({ field, value })
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task field update')
@@ -182,6 +196,7 @@ export async function softDeleteTask(taskId: string): Promise<void> {
 }
 
 export async function bulkMoveToGroup(taskIds: string[], groupId: string | null): Promise<void> {
+  const { bulkGroupSchema } = await getTaskActionSchemas()
   const parsed = bulkGroupSchema.safeParse({ taskIds, groupId })
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk move payload')
@@ -196,6 +211,7 @@ export async function bulkMoveToGroup(taskIds: string[], groupId: string | null)
 }
 
 export async function bulkSetPriority(taskIds: string[], priority: TaskPriority): Promise<void> {
+  const { bulkPrioritySchema } = await getTaskActionSchemas()
   const parsed = bulkPrioritySchema.safeParse({ taskIds, priority })
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk priority payload')
@@ -210,6 +226,7 @@ export async function bulkSetPriority(taskIds: string[], priority: TaskPriority)
 }
 
 export async function bulkAddTags(taskIds: string[], tagIds: string[]): Promise<void> {
+  const { bulkTagsSchema } = await getTaskActionSchemas()
   const parsed = bulkTagsSchema.safeParse({ taskIds, tagIds })
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk tags payload')
@@ -224,6 +241,7 @@ export async function bulkAddTags(taskIds: string[], tagIds: string[]): Promise<
 }
 
 export async function bulkSoftDelete(taskIds: string[]): Promise<void> {
+  const { bulkDeleteSchema } = await getTaskActionSchemas()
   const parsed = bulkDeleteSchema.safeParse({ taskIds })
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk delete payload')

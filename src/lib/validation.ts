@@ -1,59 +1,67 @@
 import { z } from 'zod'
-import { messages } from '@/lib/messages'
+import type { Messages } from '@/lib/i18n/types'
 
-const validation = messages.validation
+export function buildValidationSchemas(v: Messages['validation']) {
+  const nameSchema = z
+    .string()
+    .min(1, v.nameRequired)
+    .max(255, v.nameMax)
 
-export const nameSchema = z
-  .string()
-  .min(1, validation.nameRequired)
-  .max(255, validation.nameMax)
+  const emailSchema = z.string().email(v.emailInvalid).max(255, v.emailInvalid)
 
-export const emailSchema = z.string().email(validation.emailInvalid).max(255, validation.emailInvalid)
+  const passwordSchema = z
+    .string()
+    .min(8, v.passwordMin)
+    .regex(/[A-Z]/, v.passwordUppercase)
+    .regex(/[a-z]/, v.passwordLowercase)
+    .regex(/[0-9]/, v.passwordDigit)
 
-export const passwordSchema = z
-  .string()
-  .min(8, validation.passwordMin)
-  .regex(/[A-Z]/, validation.passwordUppercase)
-  .regex(/[a-z]/, validation.passwordLowercase)
-  .regex(/[0-9]/, validation.passwordDigit)
+  const taskTitleSchema = z
+    .string()
+    .min(1, v.taskTitleRequired)
+    .max(500, v.taskTitleMax)
 
-export const taskTitleSchema = z
-  .string()
-  .min(1, validation.taskTitleRequired)
-  .max(500, validation.taskTitleMax)
+  const groupNameSchema = z
+    .string()
+    .min(1, v.groupNameRequired)
+    .max(100, v.groupNameMax)
 
-export const groupNameSchema = z
-  .string()
-  .min(1, validation.groupNameRequired)
-  .max(100, validation.groupNameMax)
+  const tagNameSchema = z.string().min(1, v.tagNameRequired).max(50, v.tagNameMax)
 
-export const tagNameSchema = z
-  .string()
-  .min(1, validation.tagNameRequired)
-  .max(50, validation.tagNameMax)
+  const checklistTextSchema = z
+    .string()
+    .min(1, v.checklistTextRequired)
+    .max(500, v.checklistTextMax)
 
-export const checklistTextSchema = z
-  .string()
-  .min(1, validation.checklistTextRequired)
-  .max(500, validation.checklistTextMax)
+  const colorHexSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, v.colorHexInvalid)
 
-export const colorHexSchema = z
-  .string()
-  .regex(/^#[0-9A-Fa-f]{6}$/, validation.colorHexInvalid)
-
-export const loginSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-})
-
-export const registerSchema = z
-  .object({
-    name: nameSchema,
+  const loginSchema = z.object({
     email: emailSchema,
     password: passwordSchema,
-    confirmPassword: z.string().min(1, validation.confirmPasswordRequired),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: validation.passwordsDoNotMatch,
-    path: ['confirmPassword'],
-  })
+
+  const registerSchema = z
+    .object({
+      name: nameSchema,
+      email: emailSchema,
+      password: passwordSchema,
+      confirmPassword: z.string().min(1, v.confirmPasswordRequired),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: v.passwordsDoNotMatch,
+      path: ['confirmPassword'],
+    })
+
+  return {
+    nameSchema,
+    emailSchema,
+    passwordSchema,
+    taskTitleSchema,
+    groupNameSchema,
+    tagNameSchema,
+    checklistTextSchema,
+    colorHexSchema,
+    loginSchema,
+    registerSchema,
+  }
+}

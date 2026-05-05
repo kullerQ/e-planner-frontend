@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Calendar03Icon,
@@ -8,71 +8,81 @@ import {
   Folder01Icon,
   Home01Icon,
   ListViewIcon,
+  PlusSignIcon,
   SidebarLeft01Icon,
 } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
-import { messages } from '@/lib/messages'
+import { useI18n } from '@/lib/messages'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSidebarStore } from '@/hooks/useSidebarState'
 import { useIsMounted } from '@/hooks/useIsMounted'
 import { SidebarNav, type SidebarNavItemConfig } from './SidebarNav'
 import { UserZone } from './UserZone'
+import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import type { User } from '@/types'
-
-const PRIMARY_ITEMS: SidebarNavItemConfig[] = [
-  {
-    href: '/dashboard',
-    label: messages.dashboard.nav.dashboard,
-    icon: <HugeiconsIcon icon={Home01Icon} strokeWidth={1.5} size={20} />,
-  },
-  {
-    href: '/dashboard/tasks',
-    label: messages.dashboard.nav.list,
-    icon: <HugeiconsIcon icon={ListViewIcon} strokeWidth={1.5} size={20} />,
-  },
-  {
-    href: '/dashboard/calendar',
-    label: messages.dashboard.nav.calendar,
-    icon: <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} size={20} />,
-  },
-  {
-    href: '/dashboard/folders',
-    label: messages.dashboard.nav.folders,
-    icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} size={20} />,
-  },
-]
-
-const RECYCLE_ITEM: SidebarNavItemConfig[] = [
-  {
-    href: '/dashboard/recycle-bin',
-    label: messages.dashboard.nav.recycleBin,
-    icon: <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.5} size={20} />,
-  },
-]
 
 interface AppSidebarProps {
   user: User | null
 }
 
+function subscribeDesktopMq(onStoreChange: () => void): () => void {
+  const mq = window.matchMedia('(min-width: 1024px)')
+  mq.addEventListener('change', onStoreChange)
+  return () => mq.removeEventListener('change', onStoreChange)
+}
+
+function getDesktopMqSnapshot(): boolean {
+  return window.matchMedia('(min-width: 1024px)').matches
+}
+
+function getDesktopMqServerSnapshot(): boolean {
+  return false
+}
+
 export function AppSidebar({ user }: AppSidebarProps) {
+  const { t } = useI18n()
   const isMounted = useIsMounted()
   const collapsed = useSidebarStore((state) => state.collapsed)
   const toggle = useSidebarStore((state) => state.toggle)
-  const [isDesktop, setIsDesktop] = useState(false)
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 1024px)')
-    const handleChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches)
-
-    setIsDesktop(mediaQuery.matches)
-    mediaQuery.addEventListener('change', handleChange)
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [])
+  const openNewTaskSheet = useTaskSheetStore((state) => state.open)
+  const isDesktop = useSyncExternalStore(
+    subscribeDesktopMq,
+    getDesktopMqSnapshot,
+    getDesktopMqServerSnapshot
+  )
 
   const effectiveCollapsed = isMounted && collapsed && isDesktop
+
+  const PRIMARY_ITEMS: SidebarNavItemConfig[] = [
+    {
+      href: '/dashboard',
+      label: t.dashboard.nav.dashboard,
+      icon: <HugeiconsIcon icon={Home01Icon} strokeWidth={1.5} size={20} />,
+    },
+    {
+      href: '/dashboard/tasks',
+      label: t.dashboard.nav.list,
+      icon: <HugeiconsIcon icon={ListViewIcon} strokeWidth={1.5} size={20} />,
+    },
+    {
+      href: '/dashboard/calendar',
+      label: t.dashboard.nav.calendar,
+      icon: <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} size={20} />,
+    },
+    {
+      href: '/dashboard/folders',
+      label: t.dashboard.nav.folders,
+      icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} size={20} />,
+    },
+  ]
+
+  const RECYCLE_ITEM: SidebarNavItemConfig[] = [
+    {
+      href: '/dashboard/recycle-bin',
+      label: t.dashboard.nav.recycleBin,
+      icon: <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.5} size={20} />,
+    },
+  ]
 
   const toggleButton = (
     <button
@@ -84,7 +94,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         toggle()
       }}
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-      aria-label={effectiveCollapsed ? messages.dashboard.sidebar.expand : messages.dashboard.sidebar.collapse}
+      aria-label={effectiveCollapsed ? t.dashboard.sidebar.expand : t.dashboard.sidebar.collapse}
       aria-disabled={!isMounted || !isDesktop}
     >
       <HugeiconsIcon icon={SidebarLeft01Icon} strokeWidth={1.5} size={16} />
@@ -120,7 +130,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
             <Tooltip>
               <TooltipTrigger asChild>{toggleButton}</TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                {messages.dashboard.sidebar.expand}
+                {t.dashboard.sidebar.expand}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -131,6 +141,54 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <SidebarNav items={PRIMARY_ITEMS} collapsed={effectiveCollapsed} />
 
         <div className="flex-1" />
+
+        <div
+          className={cn(
+            'border-t border-border/40 px-2 py-2',
+            effectiveCollapsed ? 'flex justify-center' : undefined
+          )}
+        >
+          {effectiveCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    openNewTaskSheet(null)
+                  }}
+                  className={cn(
+                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-md',
+                    'bg-primary text-primary-foreground shadow-sm transition-colors duration-200 ease-out',
+                    'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                  )}
+                  aria-label={t.dashboard.nav.newTask}
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={1.5} size={20} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {t.dashboard.nav.newTask}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                openNewTaskSheet(null)
+              }}
+              className={cn(
+                'flex w-full min-h-11 items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium',
+                'bg-primary text-primary-foreground shadow-sm transition-colors duration-200 ease-out',
+                'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+              )}
+            >
+              <span className="shrink-0">
+                <HugeiconsIcon icon={PlusSignIcon} strokeWidth={1.5} size={20} />
+              </span>
+              <span className="truncate text-left">{t.dashboard.nav.newTask}</span>
+            </button>
+          )}
+        </div>
 
         <SidebarNav
           items={RECYCLE_ITEM}
