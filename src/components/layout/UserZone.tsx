@@ -4,15 +4,18 @@ import Link from 'next/link'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Settings01Icon, UserCircleIcon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import type { User } from '@/types'
 
 interface UserZoneProps {
   collapsed: boolean
-  username?: string
+  user: User | null
 }
 
-export function UserZone({ collapsed, username = 'User' }: UserZoneProps) {
+export function UserZone({ collapsed, user }: UserZoneProps) {
+  const displayName = user?.name ?? messages.dashboard.user.fallbackName
   const avatarNode = (
     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
       <HugeiconsIcon icon={UserCircleIcon} strokeWidth={1.5} size={16} />
@@ -32,13 +35,13 @@ export function UserZone({ collapsed, username = 'User' }: UserZoneProps) {
             <TooltipTrigger asChild>
               <PopoverTrigger
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors duration-200 ease-out hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                aria-label={`Open ${username} menu`}
+                aria-label={messages.dashboard.sidebar.userMenu.replace('{name}', displayName)}
               >
                 {avatarNode}
               </PopoverTrigger>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
-              {username}
+              {displayName}
             </TooltipContent>
           </Tooltip>
           <PopoverContent
@@ -53,7 +56,7 @@ export function UserZone({ collapsed, username = 'User' }: UserZoneProps) {
               className="inline-flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-sm text-foreground transition-colors duration-200 ease-out hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
               <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} size={16} />
-              <span>Settings</span>
+              <span>{messages.dashboard.nav.settings}</span>
             </Link>
           </PopoverContent>
         </Popover>
@@ -68,13 +71,13 @@ export function UserZone({ collapsed, username = 'User' }: UserZoneProps) {
             : 'w-auto opacity-100'
         )}
       >
-        {username}
+        {displayName}
       </p>
       {!collapsed ? (
         <Link
           href="/dashboard/settings"
           className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-          aria-label="Open settings"
+          aria-label={messages.dashboard.sidebar.openSettings}
         >
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} size={16} />
         </Link>

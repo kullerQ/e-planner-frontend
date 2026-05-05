@@ -40,6 +40,7 @@ import { taskTitleSchema } from '@/lib/validation'
 import { cn } from '@/lib/utils'
 import { messages } from '@/lib/messages'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
+import { useSettingsStore } from '@/stores/useSettingsStore'
 import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
 
 interface TaskDetailSheetProps {
@@ -117,10 +118,13 @@ function combineDateAndTime(date: Date, timeValue: string): string {
   return next.toISOString()
 }
 
-function emptyDraft(initialValues: { groupId?: string; dueDate?: string } | undefined): DraftState {
+function emptyDraft(
+  initialValues: { groupId?: string; dueDate?: string } | undefined,
+  defaultStatus: TaskStatus = 'todo'
+): DraftState {
   return {
     title: '',
-    status: 'todo',
+    status: defaultStatus,
     priority: 'medium',
     dueDate: initialValues?.dueDate ?? null,
     groupId: initialValues?.groupId ?? null,
@@ -157,6 +161,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const clearStatusOverride = useTaskSheetStore((state) => state.clearStatusOverride)
   const closeSheet = useTaskSheetStore((state) => state.close)
   const weekStartsOn = useWeekStartsOn()
+  const defaultStatus = useSettingsStore((state) => state.defaultStatus)
 
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task] as const)), [tasks])
   const [loadedTask, setLoadedTask] = useState<Task | null>(null)
@@ -203,8 +208,8 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     return { ...sourceTask, status: statusOverride }
   }, [sourceTask, statusOverride])
 
-  const [draft, setDraft] = useState<DraftState>(() => emptyDraft(initialValues))
-  const [baseline, setBaseline] = useState<DraftState>(() => emptyDraft(initialValues))
+  const [draft, setDraft] = useState<DraftState>(() => emptyDraft(initialValues, defaultStatus))
+  const [baseline, setBaseline] = useState<DraftState>(() => emptyDraft(initialValues, defaultStatus))
   const [fieldError, setFieldError] = useState<Record<string, string>>({})
   const [tagQuery, setTagQuery] = useState('')
   const [availableTags, setAvailableTags] = useState<Tag[]>(() =>
@@ -223,16 +228,16 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     }
     const nextDraft =
       mode === 'create'
-        ? emptyDraft(initialValues)
+        ? emptyDraft(initialValues, defaultStatus)
         : sourceTaskWithOverrides !== null
           ? draftFromTask(sourceTaskWithOverrides)
-          : emptyDraft(initialValues)
+          : emptyDraft(initialValues, defaultStatus)
 
     setDraft(nextDraft)
     setBaseline(nextDraft)
     setFieldError({})
     setTagQuery('')
-  }, [isOpen, mode, sourceTaskWithOverrides, initialValues])
+  }, [isOpen, mode, sourceTaskWithOverrides, initialValues, defaultStatus])
 
   useEffect(() => {
     if (!isOpen) {

@@ -5,4 +5,5 @@ export const OFFLINE_USER: User = {
   name: 'User',
   email: 'user@email.com',
   avatarUrl: null,
+  preferences: { language: 'en' },
 }

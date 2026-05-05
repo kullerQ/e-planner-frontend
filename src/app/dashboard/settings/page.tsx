@@ -1,35 +1,48 @@
 import { messages } from '@/lib/messages'
 import { OFFLINE_USER } from '@/lib/mock/offlineUser'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
+import { backendFetch } from '@/lib/api/server'
+import { SettingsTabs } from './SettingsTabs'
+import type { User } from '@/types'
+
+async function getUser(): Promise<User | null> {
+  try {
+    const res = await backendFetch('/users/me')
+    if (!res.ok) return null
+    return await res.json() as User
+  } catch {
+    return null
+  }
+}
 
 export default async function SettingsPage() {
   const isOfflineMock = await isDevOfflineMockEnabled()
   const user = isOfflineMock
     ? OFFLINE_USER
-    : {
-        name: 'Authenticated user',
-        email: 'Backend profile',
-      }
+    : await getUser()
+
+  if (!user) {
+    return (
+      <main className="p-6">
+        <h1 className="text-2xl font-semibold text-foreground">{messages.settings.title}</h1>
+        <p className="mt-4 text-muted-foreground">Failed to load user profile.</p>
+      </main>
+    )
+  }
 
   return (
-    <main className="space-y-6 p-6 overflow-y-auto h-full">
-      <h1 className="text-2xl font-semibold text-foreground">{messages.settings.title}</h1>
-      {isOfflineMock ? (
-        <p className="rounded-md border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground">
-          {messages.offline.devModeHint}
-        </p>
-      ) : null}
+    <main className="h-full overflow-y-auto">
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold text-foreground mb-6">{messages.settings.title}</h1>
 
-      <section className="rounded-lg border border-border/60 bg-card p-4">
-        <h2 className="text-base font-medium text-foreground">{messages.settings.profile}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{user.name}</p>
-        <p className="text-sm text-muted-foreground">{user.email}</p>
-      </section>
+        {isOfflineMock ? (
+          <p className="rounded-md border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground mb-6">
+            {messages.offline.devModeHint}
+          </p>
+        ) : null}
+      </div>
 
-      <section className="rounded-lg border border-border/60 bg-card p-4">
-        <h2 className="text-base font-medium text-foreground">{messages.settings.account}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
-      </section>
+      <SettingsTabs user={user} />
     </main>
   )
 }

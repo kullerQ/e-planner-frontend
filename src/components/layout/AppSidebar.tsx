@@ -11,31 +11,33 @@ import {
   SidebarLeft01Icon,
 } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
+import { messages } from '@/lib/messages'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSidebarStore } from '@/hooks/useSidebarState'
 import { useIsMounted } from '@/hooks/useIsMounted'
 import { SidebarNav, type SidebarNavItemConfig } from './SidebarNav'
 import { UserZone } from './UserZone'
+import type { User } from '@/types'
 
 const PRIMARY_ITEMS: SidebarNavItemConfig[] = [
   {
     href: '/dashboard',
-    label: 'Dashboard',
+    label: messages.dashboard.nav.dashboard,
     icon: <HugeiconsIcon icon={Home01Icon} strokeWidth={1.5} size={20} />,
   },
   {
     href: '/dashboard/tasks',
-    label: 'List',
+    label: messages.dashboard.nav.list,
     icon: <HugeiconsIcon icon={ListViewIcon} strokeWidth={1.5} size={20} />,
   },
   {
     href: '/dashboard/calendar',
-    label: 'Calendar',
+    label: messages.dashboard.nav.calendar,
     icon: <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} size={20} />,
   },
   {
     href: '/dashboard/folders',
-    label: 'Folders',
+    label: messages.dashboard.nav.folders,
     icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} size={20} />,
   },
 ]
@@ -43,12 +45,16 @@ const PRIMARY_ITEMS: SidebarNavItemConfig[] = [
 const RECYCLE_ITEM: SidebarNavItemConfig[] = [
   {
     href: '/dashboard/recycle-bin',
-    label: 'Recycle Bin',
+    label: messages.dashboard.nav.recycleBin,
     icon: <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.5} size={20} />,
   },
 ]
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  user: User | null
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
   const isMounted = useIsMounted()
   const collapsed = useSidebarStore((state) => state.collapsed)
   const toggle = useSidebarStore((state) => state.toggle)
@@ -78,7 +84,7 @@ export function AppSidebar() {
         toggle()
       }}
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-      aria-label={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      aria-label={effectiveCollapsed ? messages.dashboard.sidebar.expand : messages.dashboard.sidebar.collapse}
       aria-disabled={!isMounted || !isDesktop}
     >
       <HugeiconsIcon icon={SidebarLeft01Icon} strokeWidth={1.5} size={16} />
@@ -114,7 +120,7 @@ export function AppSidebar() {
             <Tooltip>
               <TooltipTrigger asChild>{toggleButton}</TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                Expand sidebar
+                {messages.dashboard.sidebar.expand}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -133,7 +139,7 @@ export function AppSidebar() {
         />
 
         <div className="border-t border-border/40">
-          <UserZone collapsed={effectiveCollapsed} />
+          <UserZone collapsed={effectiveCollapsed} user={user} />
         </div>
       </aside>
     </TooltipProvider>

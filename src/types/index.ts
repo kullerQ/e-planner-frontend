@@ -46,11 +46,16 @@ export interface TaskGroup {
   createdAt: string
 }
 
+export interface UserPreferences {
+  language: 'en' | 'pl'
+}
+
 export interface User {
   id: string
   name: string
   email: string
   avatarUrl: string | null
+  preferences: UserPreferences | null
 }
 
 export interface WidgetPlacement {
