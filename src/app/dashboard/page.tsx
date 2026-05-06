@@ -1,4 +1,4 @@
-import { backendFetchJson } from '@/lib/api/server'
+import { serverApiFetchJson } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import type { Task } from '@/types'
@@ -16,7 +16,7 @@ interface DailyPhraseResponse {
 
 async function fetchTasks(): Promise<Task[]> {
   try {
-    return await backendFetchJson<Task[]>('/tasks')
+    return await serverApiFetchJson<Task[]>('/tasks')
   } catch {
     return []
   }
@@ -24,7 +24,7 @@ async function fetchTasks(): Promise<Task[]> {
 
 async function fetchActivity(): Promise<ActivityEntry[]> {
   try {
-    return await backendFetchJson<ActivityEntry[]>('/activity')
+    return await serverApiFetchJson<ActivityEntry[]>('/activity')
   } catch {
     return []
   }
@@ -32,7 +32,7 @@ async function fetchActivity(): Promise<ActivityEntry[]> {
 
 async function fetchDailyPhrase(): Promise<DailyPhraseResponse | null> {
   try {
-    return await backendFetchJson<DailyPhraseResponse>('/daily-phrase')
+    return await serverApiFetchJson<DailyPhraseResponse>('/daily-phrase')
   } catch {
     return null
   }

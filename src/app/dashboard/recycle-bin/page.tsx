@@ -1,5 +1,5 @@
 import { RecycleBinClient } from './RecycleBinClient'
-import { backendFetchJson } from '@/lib/api/server'
+import { serverApiFetchJson } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import type { Task } from '@/types'
 
@@ -8,7 +8,7 @@ export default async function RecycleBinPage() {
 
   let tasks: Task[]
   try {
-    tasks = await backendFetchJson<Task[]>('/tasks?deleted=true', {
+    tasks = await serverApiFetchJson<Task[]>('/tasks?deleted=true', {
       next: { tags: ['tasks'] },
     })
   } catch {

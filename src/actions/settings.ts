@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import { buildValidationSchemas } from '@/lib/validation'
@@ -37,7 +37,7 @@ export async function updateLanguagePreference(
   }
 
   try {
-    const res = await backendFetch('/users/me/preferences', {
+    const res = await serverApiFetch('/users/me/preferences', {
       method: 'PATCH',
       body: parsed.data,
     })
@@ -74,7 +74,7 @@ export async function updateName(rawData: unknown): Promise<SettingsActionResult
   }
 
   try {
-    const res = await backendFetch('/users/me', {
+    const res = await serverApiFetch('/users/me', {
       method: 'PATCH',
       body: parsed.data,
     })
@@ -111,7 +111,7 @@ export async function updateEmail(rawData: unknown): Promise<SettingsActionResul
   }
 
   try {
-    const res = await backendFetch('/users/me/email', {
+    const res = await serverApiFetch('/users/me/email', {
       method: 'PATCH',
       body: parsed.data,
     })
@@ -155,7 +155,7 @@ export async function changePassword(rawData: unknown): Promise<SettingsActionRe
   }
 
   try {
-    const res = await backendFetch('/users/me/password', {
+    const res = await serverApiFetch('/users/me/password', {
       method: 'PATCH',
       body: {
         currentPassword: parsed.data.currentPassword,
@@ -181,7 +181,7 @@ export async function deleteAccount(): Promise<SettingsActionResult> {
   }
 
   try {
-    const res = await backendFetch('/users/account', {
+    const res = await serverApiFetch('/users/account', {
       method: 'DELETE',
     })
 

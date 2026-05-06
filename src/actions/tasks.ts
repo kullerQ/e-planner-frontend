@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { buildValidationSchemas } from '@/lib/validation'
 import type { TaskPriority, TaskStatus } from '@/types'
@@ -104,7 +104,7 @@ export async function updateTaskStatus(taskId: string, rawData: unknown): Promis
     throw new Error('Invalid status value')
   }
 
-  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+  const res = await serverApiFetch(`/tasks/${parsedTaskId.data}`, {
     method: 'PATCH',
     body: parsed.data,
   })
@@ -130,7 +130,7 @@ export async function createTask(rawData: unknown): Promise<void> {
     ...(parsed.data.colorHex !== undefined ? { colorHex: parsed.data.colorHex } : {}),
   }
 
-  const res = await backendFetch('/tasks', {
+  const res = await serverApiFetch('/tasks', {
     method: 'POST',
     body: payload,
   })
@@ -151,7 +151,7 @@ export async function updateTask(taskId: string, rawData: unknown): Promise<void
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid task update payload')
   }
 
-  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+  const res = await serverApiFetch(`/tasks/${parsedTaskId.data}`, {
     method: 'PATCH',
     body: parsed.data,
   })
@@ -174,7 +174,7 @@ export async function updateTaskField(taskId: string, field: string, value: unkn
   const payload = {
     [parsed.data.field]: parsed.data.value,
   }
-  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+  const res = await serverApiFetch(`/tasks/${parsedTaskId.data}`, {
     method: 'PATCH',
     body: payload,
   })
@@ -188,7 +188,7 @@ export async function softDeleteTask(taskId: string): Promise<void> {
     throw new Error('Invalid task id')
   }
 
-  const res = await backendFetch(`/tasks/${parsedTaskId.data}`, {
+  const res = await serverApiFetch(`/tasks/${parsedTaskId.data}`, {
     method: 'DELETE',
   })
   await assertResponse(res, 'soft delete task')
@@ -202,7 +202,7 @@ export async function bulkMoveToGroup(taskIds: string[], groupId: string | null)
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk move payload')
   }
 
-  const res = await backendFetch('/tasks/bulk/group', {
+  const res = await serverApiFetch('/tasks/bulk/group', {
     method: 'PATCH',
     body: parsed.data,
   })
@@ -217,7 +217,7 @@ export async function bulkSetPriority(taskIds: string[], priority: TaskPriority)
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk priority payload')
   }
 
-  const res = await backendFetch('/tasks/bulk/priority', {
+  const res = await serverApiFetch('/tasks/bulk/priority', {
     method: 'PATCH',
     body: parsed.data,
   })
@@ -232,7 +232,7 @@ export async function bulkAddTags(taskIds: string[], tagIds: string[]): Promise<
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk tags payload')
   }
 
-  const res = await backendFetch('/tasks/bulk/tags', {
+  const res = await serverApiFetch('/tasks/bulk/tags', {
     method: 'POST',
     body: parsed.data,
   })
@@ -247,7 +247,7 @@ export async function bulkSoftDelete(taskIds: string[]): Promise<void> {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid bulk delete payload')
   }
 
-  const res = await backendFetch('/tasks/bulk/delete', {
+  const res = await serverApiFetch('/tasks/bulk/delete', {
     method: 'POST',
     body: parsed.data,
   })

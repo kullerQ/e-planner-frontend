@@ -1,7 +1,7 @@
 'use server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import { buildValidationSchemas } from '@/lib/validation'
@@ -34,7 +34,7 @@ export async function loginUser(rawData: unknown): Promise<AuthActionResult> {
 
   let res: Response
   try {
-    res = await backendFetch('/auth/login', {
+    res = await serverApiFetch('/auth/login', {
       auth: false,
       method: 'POST',
       body: parsed.data,
@@ -84,7 +84,7 @@ export async function registerUser(rawData: unknown): Promise<AuthActionResult> 
 
   let res: Response
   try {
-    res = await backendFetch('/auth/register', {
+    res = await serverApiFetch('/auth/register', {
       auth: false,
       method: 'POST',
       body: {

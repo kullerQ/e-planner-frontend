@@ -1,10 +1,10 @@
 import type { Task, TaskGroup } from '@/types'
-import { apiFetch } from './index'
+import { clientApiFetch } from './index'
 
 export function getTasks(): Promise<Task[]> {
-  return apiFetch<Task[]>('/tasks')
+  return clientApiFetch<Task[]>('/tasks')
 }
 
 export function getGroups(): Promise<TaskGroup[]> {
-  return apiFetch<TaskGroup[]>('/groups')
+  return clientApiFetch<TaskGroup[]>('/groups')
 }

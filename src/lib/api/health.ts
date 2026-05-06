@@ -9,7 +9,7 @@ type HealthCacheEntry = {
 let healthCache: HealthCacheEntry | null = null
 
 function getApiBaseUrl(): string | null {
-  const apiUrl = process.env['API_URL']
+  const apiUrl = process.env['API_URL'] ?? process.env['NEXT_PUBLIC_API_URL']
   if (!apiUrl || apiUrl.trim().length === 0) {
     return null
   }

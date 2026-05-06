@@ -1,5 +1,5 @@
 import { FolderCanvas } from '@/components/folders/FolderCanvas'
-import { backendFetchJson } from '@/lib/api/server'
+import { serverApiFetchJson } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import type { Task, TaskGroup } from '@/types'
@@ -13,8 +13,8 @@ export default async function FoldersPage() {
 
   try {
     ;[tasks, groups] = await Promise.all([
-      backendFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
-      backendFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
+      serverApiFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
+      serverApiFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
     ])
   } catch {
     return (

@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { backendFetch, backendFetchJson } from '@/lib/api/server'
+import { serverApiFetch, serverApiFetchJson } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { buildValidationSchemas } from '@/lib/validation'
 import type { Tag } from '@/types'
@@ -35,7 +35,7 @@ function revalidateTagCaches(): void {
 }
 
 export async function getTags(): Promise<Tag[]> {
-  return backendFetchJson<Tag[]>('/tags', {
+  return serverApiFetchJson<Tag[]>('/tags', {
     next: { tags: ['tags'] },
   })
 }
@@ -47,7 +47,7 @@ export async function createTag(rawData: unknown): Promise<Tag> {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid tag name')
   }
 
-  const response = await backendFetch('/tags', {
+  const response = await serverApiFetch('/tags', {
     method: 'POST',
     body: parsed.data,
   })
@@ -64,7 +64,7 @@ export async function renameTag(rawData: unknown): Promise<Tag> {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid tag update payload')
   }
 
-  const response = await backendFetch(`/tags/${parsed.data.id}`, {
+  const response = await serverApiFetch(`/tags/${parsed.data.id}`, {
     method: 'PATCH',
     body: { name: parsed.data.name },
   })
@@ -80,7 +80,7 @@ export async function deleteTag(rawTagId: unknown): Promise<void> {
     throw new Error('Invalid tag id')
   }
 
-  const response = await backendFetch(`/tags/${parsedTagId.data}`, {
+  const response = await serverApiFetch(`/tags/${parsedTagId.data}`, {
     method: 'DELETE',
   })
   await assertResponse(response, 'delete tag')

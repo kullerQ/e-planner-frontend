@@ -2,7 +2,7 @@
 
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 
 const taskIdSchema = z.string().min(1, 'Task id is required')
 
@@ -18,7 +18,7 @@ export async function restoreTask(taskId: string): Promise<void> {
     throw new Error('Invalid task id')
   }
 
-  const res = await backendFetch(`/tasks/${parsedTaskId.data}/restore`, {
+  const res = await serverApiFetch(`/tasks/${parsedTaskId.data}/restore`, {
     method: 'POST',
   })
   await assertResponse(res, 'restore task')
@@ -33,7 +33,7 @@ export async function permanentlyDeleteTask(taskId: string): Promise<void> {
     throw new Error('Invalid task id')
   }
 
-  const res = await backendFetch(`/tasks/${parsedTaskId.data}/permanent`, {
+  const res = await serverApiFetch(`/tasks/${parsedTaskId.data}/permanent`, {
     method: 'DELETE',
   })
   await assertResponse(res, 'permanently delete task')
@@ -43,7 +43,7 @@ export async function permanentlyDeleteTask(taskId: string): Promise<void> {
 }
 
 export async function emptyRecycleBin(): Promise<void> {
-  const res = await backendFetch('/tasks/bulk/empty-bin', {
+  const res = await serverApiFetch('/tasks/bulk/empty-bin', {
     method: 'POST',
   })
   await assertResponse(res, 'empty recycle bin')

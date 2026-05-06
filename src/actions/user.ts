@@ -1,6 +1,6 @@
 'use server'
 
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import { OFFLINE_USER } from '@/lib/mock/offlineUser'
 import type { User } from '@/types'
@@ -11,7 +11,7 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 
   try {
-    const res = await backendFetch('/users/me')
+    const res = await serverApiFetch('/users/me')
     if (!res.ok) {
       return null
     }

@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api'
+import { clientApiFetch } from '@/lib/api'
 import type { Tag } from '@/types'
 
 interface CreateTagPayload {
@@ -10,25 +10,25 @@ interface RenameTagPayload {
 }
 
 export function getTags(): Promise<Tag[]> {
-  return apiFetch<Tag[]>('/tags')
+  return clientApiFetch<Tag[]>('/tags')
 }
 
 export function createTag(payload: CreateTagPayload): Promise<Tag> {
-  return apiFetch<Tag>('/tags', {
+  return clientApiFetch<Tag>('/tags', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export function renameTag(tagId: string, payload: RenameTagPayload): Promise<Tag> {
-  return apiFetch<Tag>(`/tags/${tagId}`, {
+  return clientApiFetch<Tag>(`/tags/${tagId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   })
 }
 
 export function deleteTag(tagId: string): Promise<void> {
-  return apiFetch<void>(`/tags/${tagId}`, {
+  return clientApiFetch<void>(`/tags/${tagId}`, {
     method: 'DELETE',
   })
 }

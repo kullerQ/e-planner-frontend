@@ -3,7 +3,7 @@
 import { cache } from 'react'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import { buildValidationSchemas } from '@/lib/validation'
 import type { TaskGroup } from '@/types'
@@ -33,7 +33,7 @@ export async function createGroup(rawData: unknown): Promise<TaskGroup> {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid group data')
   }
 
-  const res = await backendFetch('/groups', {
+  const res = await serverApiFetch('/groups', {
     method: 'POST',
     body: parsed.data,
   })
@@ -57,7 +57,7 @@ export async function renameGroup(groupId: string, name: string): Promise<void> 
     throw new Error(parsedName.error.issues[0]?.message ?? 'Invalid group name')
   }
 
-  const res = await backendFetch(`/groups/${parsedGroupId.data}`, {
+  const res = await serverApiFetch(`/groups/${parsedGroupId.data}`, {
     method: 'PATCH',
     body: { name: parsedName.data },
   })
@@ -78,7 +78,7 @@ export async function updateGroupColor(groupId: string, colorHex: string): Promi
     throw new Error('Invalid color value')
   }
 
-  const res = await backendFetch(`/groups/${parsedGroupId.data}`, {
+  const res = await serverApiFetch(`/groups/${parsedGroupId.data}`, {
     method: 'PATCH',
     body: { colorHex: parsedColor.data },
   })
@@ -94,7 +94,7 @@ export async function deleteGroupAndUngroup(groupId: string): Promise<void> {
     throw new Error('Invalid group id')
   }
 
-  const res = await backendFetch(`/groups/${parsedGroupId.data}?strategy=ungroup`, {
+  const res = await serverApiFetch(`/groups/${parsedGroupId.data}?strategy=ungroup`, {
     method: 'DELETE',
   })
   await assertResponse(res, 'delete group and ungroup tasks')
@@ -109,7 +109,7 @@ export async function deleteGroupWithTasks(groupId: string): Promise<void> {
     throw new Error('Invalid group id')
   }
 
-  const res = await backendFetch(`/groups/${parsedGroupId.data}?strategy=delete_tasks`, {
+  const res = await serverApiFetch(`/groups/${parsedGroupId.data}?strategy=delete_tasks`, {
     method: 'DELETE',
   })
   await assertResponse(res, 'delete group and tasks')
@@ -124,7 +124,7 @@ export async function reorderGroups(orderedIds: string[]): Promise<void> {
     throw new Error('Invalid ordered ids')
   }
 
-  const res = await backendFetch('/groups/batch/reorder', {
+  const res = await serverApiFetch('/groups/batch/reorder', {
     method: 'PATCH',
     body: { orderedIds: parsed.data },
   })

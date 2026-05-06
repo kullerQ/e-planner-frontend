@@ -34,7 +34,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { apiFetch } from '@/lib/api'
+import { clientApiFetch } from '@/lib/api'
 import { useWeekStartsOn } from '@/lib/preferences'
 import { buildValidationSchemas } from '@/lib/validation'
 import { cn } from '@/lib/utils'
@@ -194,7 +194,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
       }
 
       try {
-        const fetched = await apiFetch<Task>(`/tasks/${taskId}`)
+        const fetched = await clientApiFetch<Task>(`/tasks/${taskId}`)
         if (!cancelled) {
           setLoadedTask(fetched)
         }

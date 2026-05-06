@@ -1,5 +1,5 @@
 import { TaskListClient } from './TaskListClient'
-import { backendFetchJson } from '@/lib/api/server'
+import { serverApiFetchJson } from '@/lib/api/server'
 import { getServerMessages } from '@/lib/i18n/server'
 import type { Tag, Task, TaskGroup } from '@/types'
 
@@ -11,9 +11,9 @@ export default async function TasksPage() {
 
   try {
     ;[tasks, groups, tags] = await Promise.all([
-      backendFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
-      backendFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
-      backendFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
+      serverApiFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
+      serverApiFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
+      serverApiFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
     ])
   } catch {
     return (

@@ -1,13 +1,13 @@
 import { getServerMessages } from '@/lib/i18n/server'
 import { OFFLINE_USER } from '@/lib/mock/offlineUser'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
-import { backendFetch } from '@/lib/api/server'
+import { serverApiFetch } from '@/lib/api/server'
 import { SettingsTabs } from './SettingsTabs'
 import type { User } from '@/types'
 
 async function getUser(): Promise<User | null> {
   try {
-    const res = await backendFetch('/users/me')
+    const res = await serverApiFetch('/users/me')
     if (!res.ok) return null
     return await res.json() as User
   } catch {

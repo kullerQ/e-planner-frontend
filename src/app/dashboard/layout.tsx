@@ -1,7 +1,7 @@
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { DashboardTaskSheetHost } from '@/components/layout/DashboardTaskSheetHost'
 import { getCurrentUser } from '@/actions/user'
-import { backendFetchJson } from '@/lib/api/server'
+import { serverApiFetchJson } from '@/lib/api/server'
 import type { Tag, Task, TaskGroup } from '@/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -13,9 +13,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   try {
     ;[tasks, groups, tags] = await Promise.all([
-      backendFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
-      backendFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
-      backendFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
+      serverApiFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
+      serverApiFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
+      serverApiFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
     ])
   } catch {}
 

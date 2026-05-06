@@ -1,14 +1,14 @@
 import { cookies } from 'next/headers'
 
-interface BackendFetchOptions extends Omit<RequestInit, 'body'> {
+interface ServerApiFetchOptions extends Omit<RequestInit, 'body'> {
   auth?: boolean
   body?: BodyInit | object | null
 }
 
 function getApiBaseUrl(): string {
-  const apiUrl = process.env['API_URL']
+  const apiUrl = process.env['API_URL'] ?? process.env['NEXT_PUBLIC_API_URL']
   if (!apiUrl || apiUrl.trim().length === 0) {
-    throw new Error('API_URL is not configured')
+    throw new Error('API_URL or NEXT_PUBLIC_API_URL must be configured')
   }
   return apiUrl.replace(/\/$/, '')
 }
@@ -58,7 +58,7 @@ function normalizeBody(body: BodyInit | object | null | undefined): BodyInit | u
   return JSON.stringify(body)
 }
 
-export async function backendFetch(path: string, options: BackendFetchOptions = {}): Promise<Response> {
+export async function serverApiFetch(path: string, options: ServerApiFetchOptions = {}): Promise<Response> {
   const { auth = true, headers, body, ...init } = options
   const baseUrl = getApiBaseUrl()
   const nextHeaders = await buildHeaders(auth, headers, body)
@@ -73,8 +73,8 @@ export async function backendFetch(path: string, options: BackendFetchOptions = 
   return fetch(`${baseUrl}${path}`, requestInit)
 }
 
-export async function backendFetchJson<T>(path: string, options: BackendFetchOptions = {}): Promise<T> {
-  const response = await backendFetch(path, options)
+export async function serverApiFetchJson<T>(path: string, options: ServerApiFetchOptions = {}): Promise<T> {
+  const response = await serverApiFetch(path, options)
   if (!response.ok) {
     throw new Error(`Backend request failed with status ${response.status}`)
   }
