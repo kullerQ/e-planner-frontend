@@ -9,22 +9,22 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
 
 export async function generateMetadata(): Promise<Metadata> {
-  const messages = await getServerMessages()
+  const t = await getServerMessages()
 
   return {
-    title: messages.meta.title,
-    description: messages.meta.description,
+    title: t.meta.title,
+    description: t.meta.description,
   }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getUserLocale()
-  const messages = await getServerMessages()
+  const t = await getServerMessages()
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
       <body>
-        <LocaleProvider initialLocale={locale} initialMessages={messages}>
+        <LocaleProvider initialLocale={locale} initialMessages={t}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}
             <Toaster />

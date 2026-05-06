@@ -5,7 +5,7 @@ import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
 import type { Task, TaskGroup } from '@/types'
 
 export default async function FoldersPage() {
-  const messages = await getServerMessages()
+  const t = await getServerMessages()
   const isOfflineMock = await isDevOfflineMockEnabled()
 
   let tasks: Task[]
@@ -19,11 +19,11 @@ export default async function FoldersPage() {
   } catch {
     return (
       <main className="p-6 overflow-y-auto h-full">
-        <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.folders.title}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{t.dashboard.folders.title}</h1>
         <section className="mt-4 rounded-md border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
           {isOfflineMock
-            ? messages.dashboard.offline.folders
-            : messages.dashboard.folders.foldersLoadError}
+            ? t.dashboard.offline.folders
+            : t.dashboard.folders.foldersLoadError}
         </section>
       </main>
     )
@@ -34,7 +34,7 @@ export default async function FoldersPage() {
 
   return (
     <main className="p-6 overflow-y-auto h-full">
-      <h1 className="text-2xl font-semibold text-foreground">{messages.dashboard.folders.title}</h1>
+      <h1 className="text-2xl font-semibold text-foreground">{t.dashboard.folders.title}</h1>
       <section className="mt-4 h-[calc(100%-3rem)]">
         <FolderCanvas groups={sortedGroups} tasks={tasks} />
       </section>

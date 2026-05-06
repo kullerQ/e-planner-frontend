@@ -16,7 +16,7 @@ async function getUser(): Promise<User | null> {
 }
 
 export default async function SettingsPage() {
-  const messages = await getServerMessages()
+  const t = await getServerMessages()
   const isOfflineMock = await isDevOfflineMockEnabled()
   const user = isOfflineMock
     ? OFFLINE_USER
@@ -25,8 +25,8 @@ export default async function SettingsPage() {
   if (!user) {
     return (
       <main className="p-6">
-        <h1 className="text-2xl font-semibold text-foreground">{messages.settings.title}</h1>
-        <p className="mt-4 text-muted-foreground">{messages.settings.profileLoadError}</p>
+        <h1 className="text-2xl font-semibold text-foreground">{t.settings.title}</h1>
+        <p className="mt-4 text-muted-foreground">{t.settings.profileLoadError}</p>
       </main>
     )
   }
@@ -34,11 +34,11 @@ export default async function SettingsPage() {
   return (
     <main className="h-full overflow-y-auto">
       <div className="p-6">
-        <h1 className="text-2xl font-semibold text-foreground mb-6">{messages.settings.title}</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-6">{t.settings.title}</h1>
 
         {isOfflineMock ? (
           <p className="rounded-md border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground mb-6">
-            {messages.offline.devModeHint}
+            {t.offline.devModeHint}
           </p>
         ) : null}
       </div>
