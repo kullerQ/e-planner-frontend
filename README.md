@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# E-Planner Frontend
 
-## Getting Started
+Modern productivity frontend for E-Planner, built with Next.js App Router and TypeScript.
+It provides authenticated flows, dashboard widgets, task management, folders, calendar views, settings, and an offline-friendly fallback mode.
 
-First, run the development server:
+## Features
+
+- Authentication pages: login and register
+- Dashboard with widgets (tasks, activity graph, daily phrase, clock)
+- Task workflows with details and markdown notes
+- Calendar and folder navigation views
+- Recycle bin and settings sections
+- Offline page and development mock support
+
+## Tech Stack
+
+- Next.js 16 + React 19 + TypeScript (strict mode)
+- Tailwind CSS 4
+- Zustand for client state
+- zod for validation
+- dnd-kit for drag and drop interactions
+- Radix UI / shadcn-style UI primitives
+- HugeIcons (`@hugeicons/react`)
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm 9+
+
+## Quick Start (Local)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App URL: [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a local `.env` (or `.env.local`) with at least:
 
-## Learn More
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+JWT_SECRET=replace_with_long_random_secret
+API_DEBUG_LOGS=false
+```
 
-To learn more about Next.js, take a look at the following resources:
+Notes:
+- `NEXT_PUBLIC_API_URL` points to the backend API base URL.
+- `JWT_SECRET` is required by frontend runtime/auth flows.
+- `API_DEBUG_LOGS=true` enables verbose API debug logs.
+- Server-side requests also support `API_URL`; if set, it is preferred over `NEXT_PUBLIC_API_URL`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm dev     # start local development server
+pnpm build   # production build
+pnpm start   # run built app
+pnpm lint    # run ESLint
+```
 
-## Deploy on Vercel
+## Docker Compose
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This repository compose file runs the frontend container only.
+The backend must run separately on the same Docker network.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Create the shared network once (or use your existing one):
+
+```bash
+docker network create eplanner-shared-network
+```
+
+Run frontend:
+
+```bash
+docker compose up --build
+```
+
+Expected frontend port:
+- Frontend: `3000`
+
+`docker-compose.yml` requires `JWT_SECRET` in environment.
+
+Network notes:
+- Frontend joins `SHARED_BACKEND_NETWORK` (default: `eplanner-shared-network`).
+- Backend container must also join the same network.
+- Ensure `NEXT_PUBLIC_API_URL` points to the backend host reachable in that network (default: `http://backend:8000/api`).
+
+## Project Structure
+
+```text
+src/
+  app/          # app routes (auth, dashboard, offline, etc.)
+  components/   # UI and feature components
+  lib/          # api clients, i18n, utilities, validation
+  stores/       # Zustand stores
+  actions/      # server actions and domain operations
+```
+
+## Development Notes
+
+- Package manager is `pnpm` only.
+- This frontend expects a compatible E-Planner backend API.
+- Keep secrets out of git (use local env files only).
