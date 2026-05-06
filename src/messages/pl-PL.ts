@@ -326,7 +326,7 @@ export const messages = {
     title: 'Ustawienia',
     profile: 'Profil',
     appearance: 'Wygląd',
-    taskDefaults: 'Domyślne zadania',
+    taskDefaults: 'Parametry domyślne',
     account: 'Konto',
     displayName: 'Nazwa wyświetlana',
     email: 'Email',
