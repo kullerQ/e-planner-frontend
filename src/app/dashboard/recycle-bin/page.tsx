@@ -11,7 +11,8 @@ export default async function RecycleBinPage() {
     tasks = await serverApiFetchJson<Task[]>('/tasks?deleted=true', {
       next: { tags: ['tasks'] },
     })
-  } catch {
+  } catch (error) {
+    console.error('[dashboard:recycle-bin] Failed to load deleted tasks', error)
     return (
       <main className="p-6 overflow-y-auto h-full">
         <h1 className="text-2xl font-semibold text-foreground">{t.dashboard.recycleBin.title}</h1>

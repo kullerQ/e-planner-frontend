@@ -1,18 +1,15 @@
 import { cache } from 'react'
-import { serverApiFetch } from '@/lib/api/server'
-import type { User } from '@/types'
+import { getCurrentUserProfile } from '@/lib/auth/currentUser'
 import { loadMessages } from './loadMessages'
 import type { Locale, Messages } from './types'
 
 export const getUserLocale = cache(async (): Promise<Locale> => {
-  try {
-    const res = await serverApiFetch('/users/me', { auth: true })
-    if (!res.ok) return 'en-US'
-    const user = (await res.json()) as User
-    return user.preferences?.language ?? 'en-US'
-  } catch {
+  const user = await getCurrentUserProfile()
+  if (!user) {
     return 'en-US'
   }
+
+  return user.preferences?.language ?? 'en-US'
 })
 
 export const getServerMessages = cache(async (): Promise<Messages> => {

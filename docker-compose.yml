@@ -1,4 +1,55 @@
 services:
+  backend: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: runtime
+    image: e_planner_backend:${E_PLANNER_BACKEND_VERSION:-latest}
+    restart: always
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      E_PLANNER_BACKEND_HOST: 0.0.0.0
+      E_PLANNER_BACKEND_DB_HOST: e_planner_backend-db
+      E_PLANNER_BACKEND_DB_PORT: 5432
+      E_PLANNER_BACKEND_DB_USER: e_planner_backend
+      E_PLANNER_BACKEND_DB_PASS: e_planner_backend
+      E_PLANNER_BACKEND_DB_BASE: e_planner_backend
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:18.1-bookworm
+    hostname: e_planner_backend-db
+    environment:
+      POSTGRES_PASSWORD: "e_planner_backend"
+      POSTGRES_USER: "e_planner_backend"
+      POSTGRES_DB: "e_planner_backend"
+    ports:
+      - "5432:5432"
+    volumes:
+      - e_planner_backend-db-data:/var/lib/postgresql
+    restart: always
+    healthcheck:
+      test: pg_isready -U e_planner_backend
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrator:
+    <<: *main_app
+    restart: "no"
+    command: python -m alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
     image: e-planner-frontend:latest
     build:
@@ -7,11 +58,13 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8000/api}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
-    networks:
-      - back_default
+      API_DEBUG_LOGS: ${API_DEBUG_LOGS:-false}
+      NEXT_PUBLIC_API_DEBUG_LOGS: ${API_DEBUG_LOGS:-false}
+    command: >
+      sh -c "echo [frontend] NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL && echo [frontend] JWT_SECRET=$JWT_SECRET && echo [frontend] API_DEBUG_LOGS=$API_DEBUG_LOGS && echo [frontend] NEXT_PUBLIC_API_DEBUG_LOGS=$NEXT_PUBLIC_API_DEBUG_LOGS && node server.js"
 
-networks:
-  back_default:
-    external: true
+volumes:
+  e_planner_backend-db-data:
+    name: e_planner_backend-db-data

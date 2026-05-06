@@ -11,7 +11,8 @@ export default async function CalendarPage() {
       serverApiFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
       serverApiFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
     ])
-  } catch {
+  } catch (error) {
+    console.error('[dashboard:calendar] Failed to load tasks/groups', error)
     return (
       <main className="p-6">
         <h1 className="text-2xl font-semibold text-foreground">Calendar</h1>

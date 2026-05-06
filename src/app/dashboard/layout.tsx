@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/actions/user'
 import { serverApiFetchJson } from '@/lib/api/server'
 import type { Tag, Task, TaskGroup } from '@/types'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
 

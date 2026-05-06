@@ -1,5 +1,9 @@
-const HEALTH_CACHE_TTL_MS = 3_000
+const HEALTH_CACHE_TTL_MS = process.env['NODE_ENV'] === 'development' ? 3_000 : 20_000
 const HEALTH_TIMEOUT_MS = 1_200
+
+function isApiDebugLoggingEnabled(): boolean {
+  return process.env['API_DEBUG_LOGS'] === 'true'
+}
 
 type HealthCacheEntry = {
   checkedAt: number
@@ -31,13 +35,24 @@ function setHealthCache(value: boolean, now: number): boolean {
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS)
+  const method = init?.method ?? 'GET'
 
   try {
-    return await fetch(url, {
+    if (isApiDebugLoggingEnabled()) {
+      console.info(`[frontend:api:health] ${method} ${url}`)
+    }
+    const response = await fetch(url, {
       ...init,
       cache: 'no-store',
       signal: controller.signal,
     })
+    if (isApiDebugLoggingEnabled()) {
+      console.info(`[frontend:api:health] ${method} ${url} -> ${response.status}`)
+    }
+    return response
+  } catch (error) {
+    console.error(`[frontend:api:health] ${method} ${url} -> network/error`, error)
+    throw error
   } finally {
     clearTimeout(timeout)
   }

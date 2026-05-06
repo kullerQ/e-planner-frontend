@@ -16,7 +16,8 @@ export default async function FoldersPage() {
       serverApiFetchJson<Task[]>('/tasks', { next: { tags: ['tasks'] } }),
       serverApiFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
     ])
-  } catch {
+  } catch (error) {
+    console.error('[dashboard:folders] Failed to load tasks/groups', error)
     return (
       <main className="p-6 overflow-y-auto h-full">
         <h1 className="text-2xl font-semibold text-foreground">{t.dashboard.folders.title}</h1>

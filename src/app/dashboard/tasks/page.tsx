@@ -15,7 +15,8 @@ export default async function TasksPage() {
       serverApiFetchJson<TaskGroup[]>('/groups', { next: { tags: ['groups'] } }),
       serverApiFetchJson<Tag[]>('/tags', { next: { tags: ['tags'] } }),
     ])
-  } catch {
+  } catch (error) {
+    console.error('[dashboard:tasks] Failed to load tasks/groups/tags', error)
     return (
       <main className="p-6 overflow-y-auto h-full">
         <h1 className="text-2xl font-semibold text-foreground">{t.dashboard.tasks.title}</h1>
