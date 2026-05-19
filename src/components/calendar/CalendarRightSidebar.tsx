@@ -18,6 +18,7 @@ interface CalendarRightSidebarProps {
   calendarView: 'day' | 'week' | 'month'
   weekStartsOn: WeekStartsOn
   isTaskSheetOpen: boolean
+  isFolded: boolean
   onSelectDate: (date: Date) => void
   onPrevMonth: () => void
   onNextMonth: () => void
@@ -29,6 +30,7 @@ export function CalendarRightSidebar({
   calendarView,
   weekStartsOn,
   isTaskSheetOpen,
+  isFolded,
   onSelectDate,
   onPrevMonth,
   onNextMonth,
@@ -84,9 +86,9 @@ export function CalendarRightSidebar({
   return (
     <aside
       className={cn(
-        'w-52 flex-shrink-0 border-l border-border/50 flex flex-col overflow-hidden',
-        'transition-transform duration-300 ease-in-out',
-        isTaskSheetOpen && 'translate-x-full opacity-0 pointer-events-none'
+        'w-52 h-full flex-shrink-0 border-l border-border/50 flex flex-col overflow-hidden',
+        'translate-x-0 opacity-100 transition-[transform,opacity] duration-300 ease-in-out',
+        (isTaskSheetOpen || isFolded) && 'translate-x-full opacity-0 pointer-events-none'
       )}
     >
       {/* Mini Calendar */}

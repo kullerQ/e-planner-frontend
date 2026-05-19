@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getServerMessages } from '@/lib/i18n/server'
 import { isDevOfflineMockEnabled } from '@/lib/offline/runtime'
+import { OfflineAutoRedirect } from './OfflineAutoRedirect'
 
 export default async function OfflinePage() {
   const { offline: offlineMessages } = await getServerMessages()
@@ -8,6 +9,7 @@ export default async function OfflinePage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-6">
+      <OfflineAutoRedirect />
       <section className="max-w-md w-full bg-card border border-border/60 rounded-lg p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-foreground">{offlineMessages.title}</h1>
         <p className="mt-3 text-sm text-muted-foreground">{offlineMessages.description}</p>

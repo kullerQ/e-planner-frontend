@@ -101,6 +101,8 @@ export const messages = {
       viewMonth: 'Miesiąc',
       previousPeriod: 'Poprzedni okres',
       nextPeriod: 'Następny okres',
+      foldSidebar: 'Zwiń pasek boczny kalendarza',
+      unfoldSidebar: 'Rozwiń pasek boczny kalendarza',
     },
     folders: {
       title: 'Foldery',

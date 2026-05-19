@@ -101,6 +101,8 @@ export const messages = {
       viewMonth: 'Month',
       previousPeriod: 'Previous period',
       nextPeriod: 'Next period',
+      foldSidebar: 'Fold calendar sidebar',
+      unfoldSidebar: 'Unfold calendar sidebar',
     },
     folders: {
       title: 'Folders',

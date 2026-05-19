@@ -7,6 +7,7 @@ import { CalendarGrid } from '@/components/calendar/CalendarGrid'
 import { CalendarRightSidebar } from '@/components/calendar/CalendarRightSidebar'
 import { useViewStore } from '@/stores/useViewStore'
 import { useCalendarVisibilityStore } from '@/stores/useCalendarVisibilityStore'
+import { useCalendarSidebarStore } from '@/stores/useCalendarSidebarStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useWeekStartsOn } from '@/lib/preferences'
 import { useGroupsStore } from '@/stores/useGroupsStore'
@@ -71,6 +72,7 @@ export function CalendarClient({ initialTasks, initialGroups }: CalendarClientPr
   const { t, locale } = useI18n()
   const { calendarView, setCalendarView } = useViewStore()
   const { hiddenGroupIds } = useCalendarVisibilityStore()
+  const { isRightSidebarFolded, toggleRightSidebarFold } = useCalendarSidebarStore()
   const { isOpen: isTaskSheetOpen, open: openTaskSheet } = useTaskSheetStore()
   const weekStartsOn = useWeekStartsOn()
 
@@ -213,6 +215,22 @@ export function CalendarClient({ initialTasks, initialGroups }: CalendarClientPr
               <SelectItem value="month">{t.dashboard.calendar.viewMonth}</SelectItem>
             </SelectContent>
           </Select>
+
+          <button
+            type="button"
+            onClick={toggleRightSidebarFold}
+            className="size-8 flex items-center justify-center rounded-md border border-border hover:bg-accent transition-colors"
+            aria-label={
+              isRightSidebarFolded
+                ? t.dashboard.calendar.unfoldSidebar
+                : t.dashboard.calendar.foldSidebar
+            }
+          >
+            <HugeiconsIcon
+              icon={isRightSidebarFolded ? ArrowLeft01Icon : ArrowRight01Icon}
+              size={14}
+            />
+          </button>
         </div>
 
         {/* Grid */}
@@ -233,16 +251,24 @@ export function CalendarClient({ initialTasks, initialGroups }: CalendarClientPr
 
       {/* Right sidebar */}
       <div className="w-4 flex-shrink-0" />
-      <CalendarRightSidebar
-        currentDate={miniCalDate}
-        selectedDate={currentDate}
-        calendarView={calendarView}
-        weekStartsOn={weekStartsOn}
-        isTaskSheetOpen={isTaskSheetOpen}
-        onSelectDate={handleMiniCalSelectDate}
-        onPrevMonth={handleMiniCalPrevMonth}
-        onNextMonth={handleMiniCalNextMonth}
-      />
+      <div
+        className={cn(
+          'flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out',
+          isRightSidebarFolded ? 'w-0' : 'w-52',
+        )}
+      >
+        <CalendarRightSidebar
+          currentDate={miniCalDate}
+          selectedDate={currentDate}
+          calendarView={calendarView}
+          weekStartsOn={weekStartsOn}
+          isTaskSheetOpen={isTaskSheetOpen}
+          isFolded={isRightSidebarFolded}
+          onSelectDate={handleMiniCalSelectDate}
+          onPrevMonth={handleMiniCalPrevMonth}
+          onNextMonth={handleMiniCalNextMonth}
+        />
+      </div>
 
     </div>
   )
