@@ -107,6 +107,19 @@ export const messages = {
     folders: {
       title: 'Folders',
       newFolderPlaceholder: 'Folder name…',
+      selectMode: 'Select',
+      doneSelecting: 'Done',
+      selectedFoldersCount: '{count} folder{plural} selected',
+      deleteSelected: 'Delete selected',
+      bulkDeleteTitle: 'Delete selected folders',
+      bulkDeleteDescription:
+        'Delete {count} folder{plural}? Tasks in these folders will become ungrouped.',
+      bulkDeleteConfirm: 'Delete folders',
+      bulkDeleteSuccess: '{count} folder{plural} deleted',
+      bulkDeletePartialError:
+        'Deleted some folders, but {failed} of {total} failed: {names}',
+      bulkDeleteUnknownFolder: 'unknown folder',
+      bulkDeleteError: 'Failed to delete selected folders',
       createdSuccess: 'Folder created',
       createError: 'Failed to create folder',
       renameError: 'Failed to rename folder',
@@ -399,6 +412,8 @@ export const messages = {
   },
   folders: {
     newFolder: 'New folder',
+    selectBadge: 'Select',
+    selectedBadge: 'Selected',
     pressEnterToCreate: 'Press Enter to create',
     noTasks: 'No tasks',
     tasksCount: '{count} {plural}',

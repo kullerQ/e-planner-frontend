@@ -107,6 +107,19 @@ export const messages = {
     folders: {
       title: 'Foldery',
       newFolderPlaceholder: 'Nazwa folderu…',
+      selectMode: 'Wybierz',
+      doneSelecting: 'Gotowe',
+      selectedFoldersCount: 'Wybrano {count} folder{plural}',
+      deleteSelected: 'Usuń wybrane',
+      bulkDeleteTitle: 'Usuń wybrane foldery',
+      bulkDeleteDescription:
+        'Usunąć {count} folder{plural}? Zadania z tych folderów pozostaną niezgrupowane.',
+      bulkDeleteConfirm: 'Usuń foldery',
+      bulkDeleteSuccess: 'Usunięto {count} folder{plural}',
+      bulkDeletePartialError:
+        'Część folderów usunięto, ale {failed} z {total} nie udało się usunąć: {names}',
+      bulkDeleteUnknownFolder: 'nieznany folder',
+      bulkDeleteError: 'Nie udało się usunąć wybranych folderów',
       createdSuccess: 'Utworzono folder',
       createError: 'Nie udało się utworzyć folderu',
       renameError: 'Nie udało się zmienić nazwy',
@@ -400,6 +413,8 @@ export const messages = {
   },
   folders: {
     newFolder: 'Nowy folder',
+    selectBadge: 'Wybierz',
+    selectedBadge: 'Wybrano',
     pressEnterToCreate: 'Naciśnij Enter aby utworzyć',
     noTasks: 'Brak zadań',
     tasksCount: '{count} {plural}',

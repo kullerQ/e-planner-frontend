@@ -11,6 +11,7 @@ import type { TaskGroup } from '@/types'
 const groupIdSchema = z.string().min(1, 'Group id is required')
 
 const reorderGroupsSchema = z.array(z.string().min(1))
+const bulkGroupIdsSchema = z.array(groupIdSchema).min(1, 'At least one group id is required')
 
 const getGroupFieldSchemas = cache(async () =>
   buildValidationSchemas((await getServerMessages()).validation)
@@ -116,6 +117,53 @@ export async function deleteGroupWithTasks(groupId: string): Promise<void> {
 
   revalidateTag('groups', 'max')
   revalidateTag('tasks', 'max')
+}
+
+export interface BulkDeleteGroupsResult {
+  deletedIds: string[]
+  failed: Array<{ groupId: string; message: string }>
+}
+
+export async function bulkDeleteGroupsAndUngroup(groupIds: string[]): Promise<BulkDeleteGroupsResult> {
+  const parsed = bulkGroupIdsSchema.safeParse(groupIds)
+  if (!parsed.success) {
+    throw new Error('Invalid group ids')
+  }
+
+  const uniqueGroupIds = Array.from(new Set(parsed.data))
+  const settled = await Promise.allSettled(
+    uniqueGroupIds.map(async (groupId) => {
+      const res = await serverApiFetch(`/groups/${groupId}?strategy=ungroup`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        throw new Error(`Failed to delete group ${groupId}`)
+      }
+      return groupId
+    })
+  )
+
+  const deletedIds: string[] = []
+  const failed: Array<{ groupId: string; message: string }> = []
+
+  settled.forEach((result, index) => {
+    const groupId = uniqueGroupIds[index]
+    if (!groupId) return
+    if (result.status === 'fulfilled') {
+      deletedIds.push(result.value)
+      return
+    }
+    const message =
+      result.reason instanceof Error ? result.reason.message : 'Failed to delete group'
+    failed.push({ groupId, message })
+  })
+
+  if (deletedIds.length > 0) {
+    revalidateTag('groups', 'max')
+    revalidateTag('tasks', 'max')
+  }
+
+  return { deletedIds, failed }
 }
 
 export async function reorderGroups(orderedIds: string[]): Promise<void> {

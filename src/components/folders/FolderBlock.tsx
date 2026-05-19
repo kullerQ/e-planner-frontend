@@ -29,6 +29,9 @@ interface FolderBlockProps {
   onDeleteClick: (group: TaskGroup) => void
   onOptimisticUpdate?: (group: TaskGroup) => void
   onTaskMoved?: (taskId: string, groupId: string | null) => void
+  isSelectMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (groupId: string) => void
 }
 
 const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
@@ -45,6 +48,9 @@ export function FolderBlock({
   onDeleteClick,
   onOptimisticUpdate,
   onTaskMoved,
+  isSelectMode = false,
+  isSelected = false,
+  onToggleSelect,
 }: FolderBlockProps) {
   const { t } = useI18n()
   const openTaskSheet = useTaskSheetStore((state) => state.open)
@@ -61,7 +67,7 @@ export function FolderBlock({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: group.id })
+  } = useSortable({ id: group.id, disabled: isSelectMode })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -162,14 +168,34 @@ export function FolderBlock({
     }
   }
 
+  function handleSelectToggle() {
+    if (!isSelectMode) return
+    onToggleSelect?.(group.id)
+  }
+
+  function handleSelectKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!isSelectMode) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onToggleSelect?.(group.id)
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
+      onClick={handleSelectToggle}
+      onKeyDown={handleSelectKeyDown}
+      role={isSelectMode ? 'button' : undefined}
+      tabIndex={isSelectMode ? 0 : undefined}
+      aria-pressed={isSelectMode ? isSelected : undefined}
       className={cn(
         'group bg-card/90 backdrop-blur-sm border border-border/60 rounded-lg h-[220px]',
         'flex flex-col',
         'transition-shadow duration-150 ease-out',
+        isSelectMode && 'cursor-pointer hover:border-primary/60',
+        isSelectMode && isSelected && 'border-primary ring-2 ring-primary/25',
         isDragging && 'shadow-xl scale-[1.01] opacity-90 z-50 duration-150 ease-out'
       )}
     >
@@ -182,6 +208,7 @@ export function FolderBlock({
               className="size-4 rounded-sm flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               style={{ backgroundColor: group.colorHex }}
               aria-label={t.folders.changeColor}
+              disabled={isSelectMode}
             />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[240px] p-3">
@@ -201,6 +228,7 @@ export function FolderBlock({
             className="h-7 text-sm flex-1"
             autoFocus
             aria-label={t.dashboard.folders.aria.renameInput}
+            disabled={isSelectMode}
           />
         ) : (
           <span
@@ -216,33 +244,48 @@ export function FolderBlock({
           </span>
         )}
 
-        {/* Rename button */}
-        <button
-          type="button"
-          onClick={startRenaming}
-          className={cn(
-            'size-6 inline-flex items-center justify-center rounded-sm text-muted-foreground',
-            'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-            'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          )}
-          aria-label={`Rename ${group.name}`}
-        >
-          <HugeiconsIcon icon={Edit02Icon} size={14} />
-        </button>
+        {isSelectMode ? (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+              isSelected
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-border/60 text-muted-foreground'
+            )}
+          >
+            {isSelected ? t.folders.selectedBadge : t.folders.selectBadge}
+          </span>
+        ) : (
+          <>
+            {/* Rename button */}
+            <button
+              type="button"
+              onClick={startRenaming}
+              className={cn(
+                'size-6 inline-flex items-center justify-center rounded-sm text-muted-foreground',
+                'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+                'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              )}
+              aria-label={`Rename ${group.name}`}
+            >
+              <HugeiconsIcon icon={Edit02Icon} size={14} />
+            </button>
 
-        {/* Delete button */}
-        <button
-          type="button"
-          onClick={() => onDeleteClick(group)}
-          className={cn(
-            'size-6 inline-flex items-center justify-center rounded-sm text-muted-foreground',
-            'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-            'hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          )}
-          aria-label={`Delete ${group.name}`}
-        >
-          <HugeiconsIcon icon={Delete02Icon} size={14} />
-        </button>
+            {/* Delete button */}
+            <button
+              type="button"
+              onClick={() => onDeleteClick(group)}
+              className={cn(
+                'size-6 inline-flex items-center justify-center rounded-sm text-muted-foreground',
+                'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+                'hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              )}
+              aria-label={`Delete ${group.name}`}
+            >
+              <HugeiconsIcon icon={Delete02Icon} size={14} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Task list - scrollable with max height */}
@@ -260,6 +303,7 @@ export function FolderBlock({
               <button
                 type="button"
                 onClick={() => handleTaskClick(task.id)}
+                disabled={isSelectMode}
                 className={cn(
                   'flex-1 min-w-0 text-left text-sm text-muted-foreground py-2 flex items-center gap-2',
                   'group-hover/task:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
@@ -274,6 +318,7 @@ export function FolderBlock({
               <button
                 type="button"
                 onClick={() => handleRemoveTask(task.id)}
+                disabled={isSelectMode}
                 className={cn(
                   'flex-shrink-0 size-5 inline-flex items-center justify-center rounded-sm',
                   'text-muted-foreground/0 group-hover/task:text-muted-foreground',
@@ -295,10 +340,11 @@ export function FolderBlock({
         <span className="text-xs text-muted-foreground">
           {tasks.length} {tasks.length !== 1 ? t.folders.tasks : t.folders.task}
         </span>
-        <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+        <Popover open={addMenuOpen && !isSelectMode} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
+              disabled={isSelectMode}
               className="text-xs text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1"
             >
               {t.folders.addTask}
