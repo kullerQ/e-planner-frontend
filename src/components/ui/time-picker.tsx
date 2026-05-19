@@ -14,6 +14,7 @@ type Field = 'hours' | 'minutes'
 export interface TimePickerProps {
   value: string
   onChange: (value: string) => void
+  minValue?: string | undefined
   className?: string
   'aria-label'?: string
 }
@@ -43,10 +44,15 @@ function parseTime(value: string): { h: number; m: number } {
 export function TimePicker({
   value,
   onChange,
+  minValue,
   className,
   'aria-label': ariaLabel,
 }: TimePickerProps) {
   const { h, m } = parseTime(value)
+  const minTime = minValue ? parseTime(minValue) : null
+  const minTotalMinutes = minTime ? minTime.h * 60 + minTime.m : null
+  const minHours = minTime?.h ?? 0
+  const minMinutes = minTime?.m ?? 0
   const [hoursDraft, setHoursDraft] = React.useState(pad(h))
   const [minutesDraft, setMinutesDraft] = React.useState(pad(m))
   const [activeField, setActiveField] = React.useState<Field>('hours')
@@ -69,9 +75,18 @@ export function TimePicker({
 
   const commit = React.useCallback(
     (nextH: number, nextM: number) => {
-      onChange(`${pad(nextH)}:${pad(nextM)}`)
+      if (minTotalMinutes === null) {
+        onChange(`${pad(nextH)}:${pad(nextM)}`)
+        return
+      }
+      const nextTotal = nextH * 60 + nextM
+      if (nextTotal >= minTotalMinutes) {
+        onChange(`${pad(nextH)}:${pad(nextM)}`)
+        return
+      }
+      onChange(`${pad(minHours)}:${pad(minMinutes)}`)
     },
-    [onChange]
+    [minHours, minMinutes, minTotalMinutes, onChange]
   )
 
   const step = (delta: number) => {

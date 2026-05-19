@@ -12,6 +12,7 @@ import {
   PlusSignIcon,
 } from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
+import { createGroup } from '@/actions/groups'
 import { createTag, deleteTag, renameTag } from '@/actions/tags'
 import { createTask, softDeleteTask, updateTask } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
@@ -21,7 +22,6 @@ import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TimePicker } from '@/components/ui/time-picker'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
@@ -37,7 +37,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { clientApiFetch } from '@/lib/api'
 import { useWeekStartsOn } from '@/lib/preferences'
 import { buildValidationSchemas } from '@/lib/validation'
-import { cn } from '@/lib/utils'
+import { cn, randomGroupColor } from '@/lib/utils'
 import { useI18n } from '@/lib/messages'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
@@ -114,6 +114,20 @@ function combineDateAndTime(date: Date, timeValue: string): string {
     next.setHours(0, 0, 0, 0)
   }
   return next.toISOString()
+}
+
+function startOfToday(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function isDateBeforeToday(date: Date): boolean {
+  return date.getTime() < startOfToday().getTime()
+}
+
+function formatTimeInputFromDate(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 function emptyDraft(
@@ -228,11 +242,16 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const [availableTags, setAvailableTags] = useState<Tag[]>(() =>
     [...tags].sort((left, right) => left.name.localeCompare(right.name))
   )
+  const [groupQuery, setGroupQuery] = useState('')
+  const [availableGroups, setAvailableGroups] = useState<TaskGroup[]>(() =>
+    [...groups].sort((left, right) => left.name.localeCompare(right.name))
+  )
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [editingTagName, setEditingTagName] = useState('')
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isTagMutationPending, startTagMutation] = useTransition()
+  const [isGroupMutationPending, startGroupMutation] = useTransition()
   const titleRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -250,7 +269,21 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     setBaseline(nextDraft)
     setFieldError({})
     setTagQuery('')
+    setGroupQuery('')
   }, [isOpen, mode, sourceTaskWithOverrides, initialValues, defaultStatus])
+
+  useEffect(() => {
+    setAvailableGroups((current) => {
+      const remoteById = new Map(groups.map((group) => [group.id, group] as const))
+      const merged = [...groups]
+      for (const group of current) {
+        if (!remoteById.has(group.id)) {
+          merged.push(group)
+        }
+      }
+      return merged.sort((left, right) => left.name.localeCompare(right.name))
+    })
+  }, [groups])
 
   useEffect(() => {
     if (!isOpen) {
@@ -278,8 +311,43 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
   const canCreateTagFromQuery = normalizeTagName(tagQuery).length > 0 && exactTagMatch === undefined
 
+  const visibleGroups = useMemo(() => {
+    const normalized = groupQuery.trim().toLowerCase()
+    if (normalized.length === 0) {
+      return availableGroups
+    }
+    return availableGroups.filter((group) => group.name.toLowerCase().includes(normalized))
+  }, [availableGroups, groupQuery])
+
+  const exactGroupMatch = useMemo(() => {
+    const normalizedQuery = normalizeTagName(groupQuery)
+    if (normalizedQuery.length === 0) {
+      return undefined
+    }
+    return availableGroups.find((group) => normalizeTagName(group.name) === normalizedQuery)
+  }, [availableGroups, groupQuery])
+
+  const canCreateGroupFromQuery = normalizeTagName(groupQuery).length > 0 && exactGroupMatch === undefined
+
   const selectedTagSet = useMemo(() => new Set(draft.tagIds), [draft.tagIds])
   const tagsById = useMemo(() => new Map(availableTags.map((tag) => [tag.id, tag] as const)), [availableTags])
+  const selectedGroup = useMemo(
+    () => availableGroups.find((group) => group.id === draft.groupId) ?? null,
+    [availableGroups, draft.groupId]
+  )
+  const dueDateMinTime = useMemo(() => {
+    const baseDate = toDate(draft.dueDate)
+    if (!baseDate) {
+      return formatTimeInputFromDate(new Date())
+    }
+    const today = startOfToday()
+    const baseDay = new Date(baseDate)
+    baseDay.setHours(0, 0, 0, 0)
+    if (baseDay.getTime() !== today.getTime()) {
+      return undefined
+    }
+    return formatTimeInputFromDate(new Date())
+  }, [draft.dueDate])
   const hasUnsavedChanges = useMemo(() => {
     return (
       draft.title !== baseline.title ||
@@ -318,17 +386,38 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     clearFieldError(String(field))
   }
 
+  function validateBeforeSubmit(): { title: string } | null {
+    const parsedTitle = taskTitleSchema.safeParse(draft.title.trim())
+    if (!parsedTitle.success) {
+      setFieldFailure('title', parsedTitle.error.issues[0]?.message ?? t.validation.taskTitleRequired)
+      return null
+    }
+
+    if (draft.dueDate !== null) {
+      const dueDate = new Date(draft.dueDate)
+      const nowAtMinute = new Date()
+      nowAtMinute.setSeconds(0, 0)
+      if (Number.isNaN(dueDate.getTime()) || dueDate.getTime() < nowAtMinute.getTime()) {
+        setFieldFailure('dueDate', t.tasks.dueDatePastError)
+        return null
+      }
+    }
+
+    clearFieldError('title')
+    clearFieldError('dueDate')
+    return { title: parsedTitle.data }
+  }
+
   async function handleCreate() {
-    const parsed = taskTitleSchema.safeParse(draft.title.trim())
-    if (!parsed.success) {
-      setFieldFailure('title', parsed.error.issues[0]?.message ?? t.validation.taskTitleRequired)
+    const validated = validateBeforeSubmit()
+    if (!validated) {
       return
     }
 
     startTransition(async () => {
       try {
         await createTask({
-          title: parsed.data,
+          title: validated.title,
           status: draft.status,
           priority: draft.priority,
           dueDate: draft.dueDate,
@@ -336,6 +425,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
           tagIds: draft.tagIds,
           notes: draft.notes.length > 0 ? draft.notes : null,
         })
+        toast.success(t.tasks.createSuccess)
         closeSheet()
         router.refresh()
       } catch {
@@ -348,16 +438,15 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     if (mode === 'create' || taskId === null) {
       return
     }
-    const parsed = taskTitleSchema.safeParse(draft.title.trim())
-    if (!parsed.success) {
-      setFieldFailure('title', parsed.error.issues[0]?.message ?? t.validation.taskTitleRequired)
+    const validated = validateBeforeSubmit()
+    if (!validated) {
       return
     }
 
     startTransition(async () => {
       try {
         await updateTask(taskId, {
-          title: parsed.data,
+          title: validated.title,
           status: draft.status,
           priority: draft.priority,
           dueDate: draft.dueDate,
@@ -365,7 +454,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
           tagIds: draft.tagIds,
           notes: draft.notes.length > 0 ? draft.notes : null,
         })
-        setBaseline({ ...draft, title: parsed.data })
+        setBaseline({ ...draft, title: validated.title })
         // Optimistically update parent with new task data
         if (onTaskUpdated && sourceTask) {
           const updatedTags = draft.tagIds
@@ -373,7 +462,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
             .filter((t): t is Tag => t !== undefined)
           onTaskUpdated({
             ...sourceTask,
-            title: parsed.data,
+            title: validated.title,
             status: draft.status,
             priority: draft.priority,
             dueDate: draft.dueDate,
@@ -382,6 +471,9 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
             notes: draft.notes.length > 0 ? draft.notes : null,
           })
         }
+        toast.success(t.tasks.saveSuccess)
+        clearStatusOverride(taskId)
+        closeSheet()
         router.refresh()
       } catch {
         setFieldFailure('submit', t.tasks.errorSave)
@@ -405,10 +497,26 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     })
   }
 
-  function requestCloseSheet() {
+  function requestCloseSheet(trigger: 'outside' | 'cancel' = 'cancel') {
+    if (isPending) {
+      return
+    }
+
+    if (mode === 'create') {
+      if (trigger === 'outside') {
+        void handleCreate()
+        return
+      }
+      closeSheet()
+      return
+    }
+
     if (hasUnsavedChanges) {
       setConfirmCloseOpen(true)
       return
+    }
+    if (taskId !== null) {
+      clearStatusOverride(taskId)
     }
     closeSheet()
   }
@@ -445,6 +553,34 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
         setTagQuery('')
       } catch {
         toast.error(t.tasks.tagCreateError)
+      }
+    })
+  }
+
+  function applyCreatedGroupLocally(created: TaskGroup) {
+    setAvailableGroups((current) => {
+      if (current.some((group) => group.id === created.id)) {
+        return current
+      }
+      return [...current, created].sort((left, right) => left.name.localeCompare(right.name))
+    })
+    setDraftField('groupId', created.id)
+  }
+
+  function handleCreateGroupFromQuery() {
+    const nextName = groupQuery.trim()
+    if (nextName.length === 0 || isGroupMutationPending) {
+      return
+    }
+
+    startGroupMutation(async () => {
+      try {
+        const createdGroup = await createGroup({ name: nextName, colorHex: randomGroupColor() })
+        applyCreatedGroupLocally(createdGroup)
+        setGroupQuery('')
+        router.refresh()
+      } catch {
+        toast.error(t.tasks.groupCreateError)
       }
     })
   }
@@ -510,16 +646,15 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   }
 
   async function handleSaveAndClose() {
-    const parsed = taskTitleSchema.safeParse(draft.title.trim())
-    if (!parsed.success) {
-      setFieldFailure('title', parsed.error?.issues[0]?.message ?? t.validation.taskTitleRequired)
+    const validated = validateBeforeSubmit()
+    if (!validated) {
       return
     }
 
     if (mode === 'create') {
       try {
         await createTask({
-          title: parsed.data,
+          title: validated.title,
           status: draft.status,
           priority: draft.priority,
           dueDate: draft.dueDate,
@@ -527,6 +662,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
           tagIds: draft.tagIds,
           notes: draft.notes.length > 0 ? draft.notes : null,
         })
+        toast.success(t.tasks.createSuccess)
         setConfirmCloseOpen(false)
         closeSheet()
         router.refresh()
@@ -543,7 +679,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
     try {
       await updateTask(taskId, {
-        title: parsed.data,
+        title: validated.title,
         status: draft.status,
         priority: draft.priority,
         dueDate: draft.dueDate,
@@ -551,8 +687,10 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
         tagIds: draft.tagIds,
         notes: draft.notes.length > 0 ? draft.notes : null,
       })
-      setBaseline({ ...draft, title: parsed.data })
+      setBaseline({ ...draft, title: validated.title })
+      toast.success(t.tasks.saveSuccess)
       setConfirmCloseOpen(false)
+      clearStatusOverride(taskId)
       closeSheet()
       router.refresh()
     } catch {
@@ -561,10 +699,9 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   }
 
   const sheetKey = taskId ?? 'create'
-  const selectedGroupValue = draft.groupId ?? 'none'
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => (open ? undefined : requestCloseSheet())}>
+    <Sheet open={isOpen} onOpenChange={(open) => (open ? undefined : requestCloseSheet('outside'))}>
       <SheetContent
         key={sheetKey}
         side="right"
@@ -695,9 +832,14 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                       <Calendar
                         mode="single"
                         selected={toDate(draft.dueDate)}
+                        disabled={(date) => isDateBeforeToday(date)}
                         onSelect={(nextDate) => {
                           if (!nextDate) {
                             setDraftField('dueDate', null)
+                            return
+                          }
+                          if (isDateBeforeToday(nextDate)) {
+                            setFieldFailure('dueDate', t.tasks.dueDatePastError)
                             return
                           }
                           const existingTime = formatTimeInputValue(draft.dueDate)
@@ -716,6 +858,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                         <TimePicker
                           aria-label={t.tasks.dueDateTime}
                           value={formatTimeInputValue(draft.dueDate)}
+                          minValue={dueDateMinTime}
                           onChange={(nextTime) => {
                             const base = toDate(draft.dueDate) ?? new Date()
                             setDraftField(
@@ -934,25 +1077,111 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">{t.tasks.group}</p>
-                <Select
-                  value={selectedGroupValue}
-                  onValueChange={(value) => {
-                    const nextGroupId = value === 'none' ? null : value
-                    setDraftField('groupId', nextGroupId)
-                  }}
-                >
-                  <SelectTrigger className="min-h-11">
-                    <SelectValue placeholder={t.tasks.groupNone} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t.tasks.groupNone}</SelectItem>
-                    {groups.map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t.tasks.groupAdd}
+                      className={cn(
+                        'flex min-h-11 w-full items-center gap-2.5 rounded-sm border border-border/60 bg-background px-3 text-left text-sm transition-colors',
+                        'hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                        selectedGroup === null && 'text-muted-foreground'
+                      )}
+                    >
+                      {selectedGroup ? (
+                        <span
+                          className="h-3.5 w-3.5 shrink-0 rounded-sm border border-black/10"
+                          style={{ backgroundColor: selectedGroup.colorHex }}
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      <span className="truncate">{selectedGroup?.name ?? t.tasks.groupNone}</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] space-y-2">
+                      <Input
+                        value={groupQuery}
+                        onChange={(event) => setGroupQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') {
+                            return
+                          }
+                          event.preventDefault()
+                          if (exactGroupMatch) {
+                            setDraftField('groupId', exactGroupMatch.id)
+                            setGroupQuery('')
+                            return
+                          }
+                          if (canCreateGroupFromQuery) {
+                            handleCreateGroupFromQuery()
+                          }
+                        }}
+                        placeholder={t.tasks.groupSearch}
+                      />
+                      <div className="max-h-40 space-y-1 overflow-y-auto">
+                        {canCreateGroupFromQuery ? (
+                          <button
+                            type="button"
+                            onClick={handleCreateGroupFromQuery}
+                            disabled={isGroupMutationPending}
+                            className={cn(
+                              'flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-sm',
+                              'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                            )}
+                          >
+                            <span>{t.tasks.groupCreate.replace('{name}', groupQuery.trim())}</span>
+                            <HugeiconsIcon icon={PlusSignIcon} size={14} />
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraftField('groupId', null)
+                            setGroupQuery('')
+                          }}
+                          className={cn(
+                            'flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-left text-sm',
+                            'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                            draft.groupId === null && 'bg-accent text-accent-foreground'
+                          )}
+                        >
+                          <span>{t.tasks.groupNone}</span>
+                          {draft.groupId === null ? <HugeiconsIcon icon={Checkmark} size={14} /> : null}
+                        </button>
+                        {visibleGroups.map((group) => {
+                          const selected = draft.groupId === group.id
+                          return (
+                            <button
+                              key={group.id}
+                              type="button"
+                              onClick={() => {
+                                setDraftField('groupId', group.id)
+                                setGroupQuery('')
+                              }}
+                              className={cn(
+                                'flex min-h-11 w-full items-center justify-between rounded-sm px-2 text-left text-sm',
+                                'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                                selected && 'bg-accent text-accent-foreground'
+                              )}
+                            >
+                              <span className="inline-flex min-w-0 items-center gap-2">
+                                <span
+                                  className="h-3.5 w-3.5 shrink-0 rounded-sm border border-black/10"
+                                  style={{ backgroundColor: group.colorHex }}
+                                  aria-hidden="true"
+                                />
+                                <span className="truncate">{group.name}</span>
+                              </span>
+                              {selected ? <HugeiconsIcon icon={Checkmark} size={14} /> : null}
+                            </button>
+                          )
+                        })}
+                        {visibleGroups.length === 0 && !canCreateGroupFromQuery ? (
+                          <p className="px-2 py-1 text-sm text-muted-foreground">{t.tasks.groupEmpty}</p>
+                        ) : null}
+                      </div>
+                  </PopoverContent>
+                </Popover>
                 {fieldError.groupId !== undefined ? (
                   <p className="mt-1 text-xs text-destructive">{fieldError.groupId}</p>
                 ) : null}
@@ -982,7 +1211,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                 type="button"
                 variant="outline"
                 className="min-h-11"
-                onClick={requestCloseSheet}
+                onClick={() => requestCloseSheet('cancel')}
                 disabled={isPending}
               >
                 {t.tasks.cancel}
