@@ -41,6 +41,18 @@ function parseTime(value: string): { h: number; m: number } {
   }
 }
 
+function parseDraftValue(
+  draft: string,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  if (draft === '') {
+    return fallback
+  }
+  return clamp(Number(draft), min, max)
+}
+
 export function TimePicker({
   value,
   onChange,
@@ -75,25 +87,44 @@ export function TimePicker({
 
   const commit = React.useCallback(
     (nextH: number, nextM: number) => {
+      let committedH = nextH
+      let committedM = nextM
       if (minTotalMinutes === null) {
-        onChange(`${pad(nextH)}:${pad(nextM)}`)
-        return
+        setHoursDraft(pad(committedH))
+        setMinutesDraft(pad(committedM))
+        onChange(`${pad(committedH)}:${pad(committedM)}`)
+        return { h: committedH, m: committedM }
       }
       const nextTotal = nextH * 60 + nextM
       if (nextTotal >= minTotalMinutes) {
-        onChange(`${pad(nextH)}:${pad(nextM)}`)
-        return
+        setHoursDraft(pad(committedH))
+        setMinutesDraft(pad(committedM))
+        onChange(`${pad(committedH)}:${pad(committedM)}`)
+        return { h: committedH, m: committedM }
       }
-      onChange(`${pad(minHours)}:${pad(minMinutes)}`)
+      committedH = minHours
+      committedM = minMinutes
+      setHoursDraft(pad(committedH))
+      setMinutesDraft(pad(committedM))
+      onChange(`${pad(committedH)}:${pad(committedM)}`)
+      return { h: committedH, m: committedM }
     },
     [minHours, minMinutes, minTotalMinutes, onChange]
   )
 
+  const getDraftTime = React.useCallback(() => {
+    return {
+      h: parseDraftValue(hoursDraft, h, 0, 23),
+      m: parseDraftValue(minutesDraft, m, 0, 59),
+    }
+  }, [h, hoursDraft, m, minutesDraft])
+
   const step = (delta: number) => {
+    const draftTime = getDraftTime()
     if (activeField === 'hours') {
-      commit((h + delta + 24) % 24, m)
+      commit((draftTime.h + delta + 24) % 24, draftTime.m)
     } else {
-      commit(h, (m + delta + 60) % 60)
+      commit(draftTime.h, (draftTime.m + delta + 60) % 60)
     }
   }
 
@@ -108,12 +139,13 @@ export function TimePicker({
   }
 
   const onHoursKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const draftTime = getDraftTime()
     if (event.key === 'ArrowUp') {
       event.preventDefault()
-      commit((h + 1) % 24, m)
+      commit((draftTime.h + 1) % 24, draftTime.m)
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
-      commit((h + 23) % 24, m)
+      commit((draftTime.h + 23) % 24, draftTime.m)
     } else if (event.key === 'ArrowRight' || event.key === ':') {
       event.preventDefault()
       focusMinutes()
@@ -121,12 +153,13 @@ export function TimePicker({
   }
 
   const onMinutesKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const draftTime = getDraftTime()
     if (event.key === 'ArrowUp') {
       event.preventDefault()
-      commit(h, (m + 1) % 60)
+      commit(draftTime.h, (draftTime.m + 1) % 60)
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
-      commit(h, (m + 59) % 60)
+      commit(draftTime.h, (draftTime.m + 59) % 60)
     } else if (
       event.key === 'ArrowLeft' &&
       (event.currentTarget.selectionStart ?? 0) === 0

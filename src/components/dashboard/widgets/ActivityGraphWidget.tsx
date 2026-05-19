@@ -19,6 +19,7 @@ interface ActivityGraphWidgetProps {
 
 const CELL_SIZE = 16 // px (square)
 const CELL_GAP = 3   // px
+const DAY_LABEL_LANE_WIDTH = 36 // w-7 (28px) + gap-2 (8px)
 
 function getIntensityClass(count: number): string {
   if (count === 0) return 'bg-muted/60'
@@ -128,7 +129,6 @@ function buildMonthLabels(
 export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetProps) {
   const { t, locale } = useI18n()
   const weekStartsOn = useWeekStartsOn()
-  const containerRef = useRef<HTMLDivElement | null>(null)
   const measureRef = useRef<HTMLDivElement | null>(null)
   const [gridWidth, setGridWidth] = useState<number>(0)
 
@@ -138,11 +138,11 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
-      setGridWidth(entry.contentRect.width)
+      setGridWidth(Math.max(0, entry.contentRect.width - DAY_LABEL_LANE_WIDTH))
     })
     ro.observe(el)
     // Initial measurement
-    setGridWidth(el.getBoundingClientRect().width)
+    setGridWidth(Math.max(0, el.getBoundingClientRect().width - DAY_LABEL_LANE_WIDTH))
     return () => ro.disconnect()
   }, [])
 
@@ -197,11 +197,13 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
   }
 
   const fullGridHeight = 7 * CELL_SIZE + 6 * CELL_GAP
+  const fullGridWidth =
+    weeks.length * CELL_SIZE + Math.max(0, weeks.length - 1) * CELL_GAP
 
   const isLoading = gridWidth <= 0
 
   return (
-    <div className="flex h-full flex-col gap-2.5 overflow-hidden">
+    <div className="flex h-full flex-col gap-2.5">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-semibold text-foreground">{t.widgets.activityGraph.title}</span>
@@ -211,19 +213,18 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
         </div>
       </div>
 
-      {/* Hidden measurement element - always rendered so ResizeObserver works */}
-      <div ref={measureRef} className="flex-1 min-h-0 flex flex-col mt-[10px]">
+      <div ref={measureRef} className="mt-[10px] flex min-h-0 flex-1 flex-col">
         <TooltipProvider delayDuration={50} skipDelayDuration={0} disableHoverableContent>
           {isLoading ? (
             <div className="flex-1 min-h-0 flex items-center justify-center">
               <div className="animate-pulse bg-muted/60 rounded w-full h-24" />
             </div>
           ) : (
-            <div className="flex-1 min-h-0 flex flex-col ">
+            <div className="flex min-h-0 flex-1 flex-col">
               {/* Month label row, aligned to the grid */}
-              <div className="flex items-end gap-2 mb-1 shrink-0">
+              <div className="mb-1 flex shrink-0 items-end gap-2">
                 <div className="w-7 shrink-0" />
-                <div ref={containerRef} className="relative flex-1 h-3">
+                <div className="relative h-3 flex-1 min-w-0">
                   {monthLabels.map((m) => {
                     const center =
                       m.weekIndex * (CELL_SIZE + CELL_GAP) +
@@ -261,7 +262,7 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
             </div>
 
             {/* Wrapper so year delimiters can be absolutely positioned over the grid */}
-            <div className="relative">
+            <div className="relative shrink-0" style={{ width: `${fullGridWidth}px` }}>
               {yearDelimiters.map(({ weekIndex, year }) => {
                 const left = weekIndex * (CELL_SIZE + CELL_GAP) - CELL_GAP / 2
                 return (
