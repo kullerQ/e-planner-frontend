@@ -244,7 +244,7 @@ export const messages = {
       status: 'Status',
     },
     sortBy: {
-      date: 'Data',
+      date: 'Termin',
       tag: 'Tag',
       title: 'Tytuł',
       created: 'Utworzono',
@@ -376,6 +376,11 @@ export const messages = {
   },
   taskRow: {
     updateStatus: 'Aktualizuj status zadania',
+    deleteAria: 'Usuń zadanie',
+    deletedToast: 'Zadanie przeniesione do kosza',
+    undo: 'Cofnij',
+    deleteError: 'Nie udało się usunąć zadania',
+    restoreError: 'Nie udało się przywrócić zadania',
   },
   taskDetail: {
     notes: 'Notatki',

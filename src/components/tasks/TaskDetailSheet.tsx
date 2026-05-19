@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
-  ArrowDown01Icon,
   Calendar03Icon,
   Cancel01Icon,
+  Checkmark,
   Delete02Icon,
   Edit02Icon,
   PlusSignIcon,
@@ -655,7 +655,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                           >
                             {option.label}
                             {draft.status === option.value ? (
-                              <HugeiconsIcon icon={ArrowDown01Icon} size={14} />
+                              <HugeiconsIcon icon={Checkmark} size={14} />
                             ) : null}
                           </button>
                         ))}

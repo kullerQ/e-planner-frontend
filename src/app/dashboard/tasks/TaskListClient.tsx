@@ -5,6 +5,7 @@ import type { Messages } from '@/lib/i18n/types'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowDown01Icon,
+  Calendar01Icon,
   Calendar03Icon,
   Cancel01Icon,
   Checkmark,
@@ -135,7 +136,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
       { value: 'date' as const, label: t.taskList.sortBy.date, icon: Calendar03Icon },
       { value: 'tag' as const, label: t.taskList.sortBy.tag, icon: Tag01Icon },
       { value: 'title' as const, label: t.taskList.sortBy.title, icon: Search01Icon },
-      { value: 'created' as const, label: t.taskList.sortBy.created, icon: Folder01Icon },
+      { value: 'created' as const, label: t.taskList.sortBy.created, icon: Calendar01Icon },
       { value: 'status' as const, label: t.taskList.sortBy.status, icon: InformationCircleIcon },
     ],
     [t.taskList.sortBy],
@@ -217,6 +218,19 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   function handleBulkDeleted(taskIds: string[]) {
     const deletedIdSet = new Set(taskIds)
     setOptimisticTasks((currentTasks) => currentTasks.filter((task) => !deletedIdSet.has(task.id)))
+  }
+
+  function handleTaskDeleted(taskId: string) {
+    setOptimisticTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId))
+  }
+
+  function handleTaskRestored(restoredTask: Task) {
+    setOptimisticTasks((currentTasks) => {
+      if (currentTasks.some((task) => task.id === restoredTask.id)) {
+        return currentTasks
+      }
+      return [...currentTasks, restoredTask]
+    })
   }
 
   function handleBulkTagsAdded(taskIds: string[], tagIds: string[]) {
@@ -638,6 +652,8 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                           isHiddenBySearch={debouncedQuery.length > 0 && !matchedTaskIds.has(task.id)}
                           searchQuery={debouncedQuery}
                           onTaskStatusOptimistic={handleTaskStatusOptimistic}
+                          onTaskDeleted={handleTaskDeleted}
+                          onTaskRestored={handleTaskRestored}
                         />
                       ))}
                     </div>

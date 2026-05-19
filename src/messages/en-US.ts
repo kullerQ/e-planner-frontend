@@ -243,7 +243,7 @@ export const messages = {
       status: 'Status',
     },
     sortBy: {
-      date: 'Date',
+      date: 'Due Date',
       tag: 'Tag',
       title: 'Title',
       created: 'Created',
@@ -375,6 +375,11 @@ export const messages = {
   },
   taskRow: {
     updateStatus: 'Update task status',
+    deleteAria: 'Delete task',
+    deletedToast: 'Task moved to Recycle Bin',
+    undo: 'Undo',
+    deleteError: 'Failed to delete task',
+    restoreError: 'Failed to restore task',
   },
   taskDetail: {
     notes: 'Notes',

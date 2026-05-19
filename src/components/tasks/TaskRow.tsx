@@ -2,9 +2,15 @@
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDown01Icon, Calendar03Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons'
+import {
+  Calendar03Icon,
+  Checkmark,
+  CheckmarkCircle01Icon,
+  Delete02Icon,
+} from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
-import { updateTaskStatus } from '@/actions/tasks'
+import { restoreTask } from '@/actions/recycle-bin'
+import { softDeleteTask, updateTaskStatus } from '@/actions/tasks'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatDueDate, isDueSoon, isOverdue } from '@/lib/utils'
@@ -19,6 +25,8 @@ interface TaskRowProps {
   isHiddenBySearch: boolean
   searchQuery: string
   onTaskStatusOptimistic?: (taskId: string, status: TaskStatus) => void
+  onTaskDeleted?: (taskId: string) => void
+  onTaskRestored?: (task: Task) => void
 }
 
 function escapeRegExp(value: string): string {
@@ -51,6 +59,8 @@ export function TaskRow({
   isHiddenBySearch,
   searchQuery,
   onTaskStatusOptimistic,
+  onTaskDeleted,
+  onTaskRestored,
 }: TaskRowProps) {
   const { t, locale } = useI18n()
 
@@ -124,6 +134,41 @@ export function TaskRow({
       return
     }
     handleOpenTask()
+  }
+
+  function handleQuickDelete(event: React.MouseEvent) {
+    event.stopPropagation()
+    if (isPending) {
+      return
+    }
+
+    const deletedTask = task
+    onTaskDeleted?.(task.id)
+
+    startTransition(async () => {
+      try {
+        await softDeleteTask(task.id)
+        toast.success(t.taskRow.deletedToast, {
+          action: {
+            label: t.taskRow.undo,
+            onClick: () => {
+              onTaskRestored?.(deletedTask)
+              startTransition(async () => {
+                try {
+                  await restoreTask(deletedTask.id)
+                } catch {
+                  onTaskDeleted?.(deletedTask.id)
+                  toast.error(t.taskRow.restoreError)
+                }
+              })
+            },
+          },
+        })
+      } catch {
+        onTaskRestored?.(deletedTask)
+        toast.error(t.taskRow.deleteError)
+      }
+    })
   }
 
   return (
@@ -239,7 +284,7 @@ export function TaskRow({
                   onClick={() => handleStatusChange(option.value)}
                 >
                   <span>{option.label}</span>
-                  {displayStatus === option.value ? <HugeiconsIcon icon={ArrowDown01Icon} size={14} /> : null}
+                  {displayStatus === option.value ? <HugeiconsIcon icon={Checkmark} size={14} /> : null}
                 </button>
               ))}
             </div>
@@ -247,6 +292,21 @@ export function TaskRow({
         </Popover>
         {statusError !== null ? <p className="text-xs text-destructive">{statusError}</p> : null}
       </div>
+
+      {!isSelecting ? (
+        <button
+          type="button"
+          onClick={handleQuickDelete}
+          className={cn(
+            'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-sm text-muted-foreground',
+            'opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive',
+            'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+          )}
+          aria-label={t.taskRow.deleteAria}
+        >
+          <HugeiconsIcon icon={Delete02Icon} size={16} />
+        </button>
+      ) : null}
     </div>
   )
 }
