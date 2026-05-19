@@ -7,7 +7,12 @@ export function buildValidationSchemas(v: Messages['validation']) {
     .min(1, v.nameRequired)
     .max(255, v.nameMax)
 
-  const emailSchema = z.string().email(v.emailInvalid).max(255, v.emailInvalid)
+  const emailSchema = z
+    .string()
+    .trim()
+    .min(1, v.emailInvalid)
+    .max(255, v.emailInvalid)
+    .email(v.emailInvalid)
 
   const passwordSchema = z
     .string()

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useI18n } from '@/lib/messages'
+import { buildValidationSchemas } from '@/lib/validation'
 import { updateName, updateEmail } from '@/actions/settings'
 import type { User } from '@/types'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -17,10 +18,12 @@ interface ProfileSectionProps {
 export function ProfileSection({ user }: ProfileSectionProps) {
   const { t } = useI18n()
   const router = useRouter()
+  const emailSchema = buildValidationSchemas(t.validation).emailSchema
   const [name, setName] = useState(user.name)
   const [email, setEmail] = useState(user.email)
   const [nameSaveStatus, setNameSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [emailSaveStatus, setEmailSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [emailFormatError, setEmailFormatError] = useState<string | null>(null)
 
   const handleNameBlur = useCallback(async () => {
     if (name === user.name) return
@@ -37,11 +40,37 @@ export function ProfileSection({ user }: ProfileSectionProps) {
 
   const handleEmailBlur = useCallback(async () => {
     if (email === user.email) return
+    const parsedEmail = emailSchema.safeParse(email)
+    if (!parsedEmail.success) {
+      setEmailFormatError(t.validation.emailInvalid)
+      setEmailSaveStatus('idle')
+      return
+    }
+
+    setEmailFormatError(null)
     setEmailSaveStatus('saving')
-    const result = await updateEmail({ email })
+    const result = await updateEmail({ email: parsedEmail.data })
     setEmailSaveStatus(result.success ? 'saved' : 'error')
     setTimeout(() => setEmailSaveStatus('idle'), 2000)
-  }, [email, user.email])
+  }, [email, emailSchema, t.validation.emailInvalid, user.email])
+
+  const handleNameKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter') return
+      event.preventDefault()
+      event.currentTarget.blur()
+    },
+    []
+  )
+
+  const handleEmailKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter') return
+      event.preventDefault()
+      event.currentTarget.blur()
+    },
+    []
+  )
 
   return (
     <div className="space-y-6 max-w-xl">
@@ -60,6 +89,7 @@ export function ProfileSection({ user }: ProfileSectionProps) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={handleNameBlur}
+            onKeyDown={handleNameKeyDown}
             disabled={nameSaveStatus === 'saving'}
           />
           {nameSaveStatus === 'saved' && (
@@ -78,9 +108,23 @@ export function ProfileSection({ user }: ProfileSectionProps) {
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setEmailFormatError(null)
+            }}
+            onInvalid={(event) => {
+              event.preventDefault()
+              event.currentTarget.setCustomValidity('')
+              setEmailFormatError(t.validation.emailInvalid)
+              setEmailSaveStatus('idle')
+            }}
+            onInput={(event) => {
+              event.currentTarget.setCustomValidity('')
+            }}
             onBlur={handleEmailBlur}
+            onKeyDown={handleEmailKeyDown}
             disabled={emailSaveStatus === 'saving'}
+            aria-invalid={emailFormatError ? true : undefined}
           />
           {emailSaveStatus === 'saved' && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -88,6 +132,9 @@ export function ProfileSection({ user }: ProfileSectionProps) {
             </div>
           )}
         </div>
+        {emailFormatError ? (
+          <p className="text-sm text-destructive">{emailFormatError}</p>
+        ) : null}
       </div>
 
       {(nameSaveStatus === 'error' || emailSaveStatus === 'error') && (
