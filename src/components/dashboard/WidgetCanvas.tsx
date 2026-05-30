@@ -29,6 +29,7 @@ interface WidgetRenderArgs {
   activityData: ActivityEntry[]
   onStatusUpdated: ((taskId: string, newStatus: Task['status']) => void) | undefined
   onTaskDeleted: ((taskId: string) => void) | undefined
+  onTaskRestored: ((taskId: string) => void) | undefined
   onRefresh: (() => void) | undefined
 }
 
@@ -40,7 +41,7 @@ const WIDGET_RENDERERS: Record<string, (args: WidgetRenderArgs) => React.ReactNo
   clock: () => <ClockWidget />,
   'daily-phrase': ({ phrase, attribution }) => <DailyPhraseWidget {...(phrase !== undefined ? { phrase } : {})} {...(attribution !== undefined ? { attribution } : {})} />,
   'month-calendar': ({ tasks }) => <MonthCalendarWidget tasks={tasks} />,
-  'todays-tasks': ({ tasks, onStatusUpdated, onTaskDeleted, onRefresh }) => <TodaysTasksWidget tasks={tasks} onStatusUpdated={onStatusUpdated} onTaskDeleted={onTaskDeleted} onRefresh={onRefresh} />,
+  'todays-tasks': ({ tasks, onStatusUpdated, onTaskDeleted, onTaskRestored, onRefresh }) => <TodaysTasksWidget tasks={tasks} onStatusUpdated={onStatusUpdated} onTaskDeleted={onTaskDeleted} onTaskRestored={onTaskRestored} onRefresh={onRefresh} />,
   'activity-graph': ({ activityData }) => <ActivityGraphWidget activityData={activityData} />,
 }
 
@@ -53,10 +54,11 @@ interface DraggableWidgetProps {
   activeDragId: string | null
   onStatusUpdated: ((taskId: string, newStatus: Task['status']) => void) | undefined
   onTaskDeleted: ((taskId: string) => void) | undefined
+  onTaskRestored: ((taskId: string) => void) | undefined
   onRefresh: (() => void) | undefined
 }
 
-function DraggableWidget({ placement, tasks, phrase, attribution, activityData, activeDragId, onStatusUpdated, onTaskDeleted, onRefresh }: DraggableWidgetProps) {
+function DraggableWidget({ placement, tasks, phrase, attribution, activityData, activeDragId, onStatusUpdated, onTaskDeleted, onTaskRestored, onRefresh }: DraggableWidgetProps) {
   const isEditMode = useDashboardStore((s) => s.isEditMode)
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: placement.instanceId,
@@ -85,7 +87,7 @@ function DraggableWidget({ placement, tasks, phrase, attribution, activityData, 
         style={{ height: '100%' }}
         variant={WIDGET_VARIANTS[placement.widgetId] ?? 'default'}
       >
-        {renderWidget({ tasks, phrase, attribution, activityData, onStatusUpdated, onTaskDeleted, onRefresh })}
+        {renderWidget({ tasks, phrase, attribution, activityData, onStatusUpdated, onTaskDeleted, onTaskRestored, onRefresh })}
       </WidgetShell>
     </div>
   )
@@ -98,10 +100,11 @@ interface WidgetCanvasProps {
   activityData: ActivityEntry[]
   onStatusUpdated: ((taskId: string, newStatus: Task['status']) => void) | undefined
   onTaskDeleted: ((taskId: string) => void) | undefined
+  onTaskRestored: ((taskId: string) => void) | undefined
   onRefresh: (() => void) | undefined
 }
 
-export function WidgetCanvas({ tasks = [], phrase, attribution, activityData, onStatusUpdated, onTaskDeleted, onRefresh }: WidgetCanvasProps) {
+export function WidgetCanvas({ tasks = [], phrase, attribution, activityData, onStatusUpdated, onTaskDeleted, onTaskRestored, onRefresh }: WidgetCanvasProps) {
   const layout = useDashboardStore((s) => s.layout)
   const isEditMode = useDashboardStore((s) => s.isEditMode)
   const setLayout = useDashboardStore((s) => s.setLayout)
@@ -198,6 +201,7 @@ export function WidgetCanvas({ tasks = [], phrase, attribution, activityData, on
               activeDragId={activeDragId}
               onStatusUpdated={onStatusUpdated}
               onTaskDeleted={onTaskDeleted}
+              onTaskRestored={onTaskRestored}
               onRefresh={onRefresh}
             />
           ))}

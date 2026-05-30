@@ -39,15 +39,15 @@ export function ClockWidget() {
         <span className="text-5xl font-light tabular-nums leading-none text-foreground tracking-tight">
           {time.hhmm}
         </span>
-        <span className="text-base font-light tabular-nums leading-none text-muted-foreground/70">
+        <span className="text-base font-light tabular-nums leading-none text-muted-foreground">
           {time.seconds}
         </span>
       </div>
       <div className="flex flex-col items-center gap-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground/80">
+        <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           {now ? formatWeekday(now, locale) : ''}
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           {now ? formatDate(now, locale) : ''}
         </span>
       </div>

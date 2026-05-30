@@ -7,13 +7,16 @@ import { useI18n } from '@/lib/messages'
 import type { Task, TaskStatus } from '@/types'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { updateTaskStatus, softDeleteTask } from '@/actions/tasks'
+import { restoreTask } from '@/actions/recycle-bin'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { toast } from 'sonner'
 
 interface TodaysTasksWidgetProps {
   tasks: Task[] | undefined
   onStatusUpdated: ((taskId: string, newStatus: TaskStatus) => void) | undefined
   onTaskDeleted: ((taskId: string) => void) | undefined
+  onTaskRestored: ((taskId: string) => void) | undefined
   onRefresh: (() => void) | undefined
 }
 
@@ -77,13 +80,13 @@ function formatTaskDate(dueDate: string, locale: string): string {
 const STATUS_STYLE: Record<TaskStatus, { dot: string; text: string }> = {
   todo: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
   in_progress: { dot: 'bg-primary', text: 'text-primary' },
-  delayed: { dot: 'bg-amber-500', text: 'text-amber-500' },
-  completed: { dot: 'bg-primary/60', text: 'text-primary/80' },
+  delayed: { dot: 'bg-amber-600 dark:bg-amber-400', text: 'text-amber-700 dark:text-amber-300' },
+  completed: { dot: 'bg-primary/70', text: 'text-primary' },
 }
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'delayed', 'completed']
 
-export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, onRefresh }: TodaysTasksWidgetProps) {
+export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, onTaskRestored, onRefresh }: TodaysTasksWidgetProps) {
   const { t, locale } = useI18n()
 
   const statusMeta = useMemo(
@@ -99,6 +102,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
   const [isPending, startTransition] = useTransition()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [openStatusId, setOpenStatusId] = useState<string | null>(null)
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState<Task | null>(null)
 
   const eligible = tasks
     .filter((t) => !t.isDeleted && t.status !== 'completed' && isTodayOrOverdue(t))
@@ -139,23 +143,54 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
         await updateTaskStatus(task.id, { status: newStatus })
         onRefresh?.()
       } catch {
-        toast.error('Failed to update status')
+        toast.error(t.tasks.statusUpdateFailed)
       }
     })
   }
 
   function handleDeleteClick(e: React.MouseEvent, task: Task) {
     e.stopPropagation()
+    if (isPending || deletingId !== null) {
+      return
+    }
+    setConfirmDeleteTask(task)
+  }
+
+  function handleConfirmDelete() {
+    const task = confirmDeleteTask
+    if (!task) {
+      return
+    }
+
     setDeletingId(task.id)
     onTaskDeleted?.(task.id)
     startTransition(async () => {
       try {
         await softDeleteTask(task.id)
-        toast.success('Task moved to recycle bin')
+        toast.success(t.taskRow.deletedToast, {
+          action: {
+            label: t.taskRow.undo,
+            onClick: () => {
+              onTaskRestored?.(task.id)
+              startTransition(async () => {
+                try {
+                  await restoreTask(task.id)
+                  onRefresh?.()
+                } catch {
+                  onTaskDeleted?.(task.id)
+                  toast.error(t.taskRow.restoreError)
+                }
+              })
+            },
+          },
+        })
+        setConfirmDeleteTask(null)
         onRefresh?.()
       } catch {
-        toast.error('Failed to delete task')
+        onTaskRestored?.(task.id)
+        toast.error(t.taskRow.deleteError)
       } finally {
+        onRefresh?.()
         setDeletingId(null)
       }
     })
@@ -194,16 +229,23 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
             const isTaskToday = isToday(task)
             const overdue = isOverdue(task)
             const time = isTaskToday && task.dueDate ? formatTaskTime(task.dueDate, locale) : null
-            const allDay = isTaskToday && task.dueDate && !hasTime(task.dueDate) ? 'ALL DAY' : null
+            const allDay = isTaskToday && task.dueDate && !hasTime(task.dueDate) ? t.widgets.todaysTasks.allDay : null
             const date = overdue && task.dueDate ? formatTaskDate(task.dueDate, locale) : null
             const isDeleting = deletingId === task.id
+            const isBusy = isPending || isDeleting
             return (
               <div
                 key={task.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => open(task.id)}
+                aria-busy={isBusy}
+                aria-disabled={isBusy}
+                onClick={() => {
+                  if (isBusy) return
+                  open(task.id)
+                }}
                 onKeyDown={(e) => {
+                  if (isBusy) return
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     open(task.id)
@@ -213,6 +255,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                   'group/task flex w-full items-center gap-2.5 rounded-lg border border-border/40 bg-muted/30 p-2.5 transition-colors cursor-pointer text-left',
                   'hover:bg-muted/60 hover:border-border',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isBusy && 'cursor-progress opacity-70',
                 )}
               >
                 {/* Main content: title row + status/tags row */}
@@ -224,7 +267,7 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                         😢
                       </span>
                     )}
-                    <span className="flex-1 truncate text-xs font-medium text-foreground/90">
+                    <span className="flex-1 truncate text-sm font-semibold text-foreground">
                       {task.title}
                     </span>
                   </div>
@@ -241,12 +284,12 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                         <button
                           type="button"
                           onClick={(e) => e.stopPropagation()}
-                          disabled={isPending}
+                          disabled={isBusy}
                           className={cn(
-                            'shrink-0 inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-wider',
+                            'shrink-0 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide',
                             'rounded-sm transition-colors cursor-pointer hover:opacity-70',
                             meta.text,
-                            isPending && 'opacity-50 cursor-not-allowed',
+                            isBusy && 'opacity-50 cursor-not-allowed',
                           )}
                         >
                           <span className={cn('block size-1.5 rounded-full', meta.dot)} />
@@ -289,13 +332,13 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                         {task.tags.slice(0, 3).map((tag) => (
                           <span
                             key={tag.id}
-                            className="inline-flex items-center rounded-sm bg-card/80 border border-border/50 px-1.5 py-px text-[9px] font-medium text-muted-foreground truncate max-w-[80px]"
+                            className="inline-flex items-center rounded-sm bg-card/90 border border-border/60 px-1.5 py-px text-[10px] font-medium text-muted-foreground truncate max-w-[88px]"
                           >
                             {tag.name}
                           </span>
                         ))}
                         {task.tags.length > 3 && (
-                          <span className="text-[9px] text-muted-foreground shrink-0">
+                          <span className="text-[10px] text-muted-foreground shrink-0">
                             +{task.tags.length - 3}
                           </span>
                         )}
@@ -309,27 +352,32 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
                   {(time || allDay || date) && (
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 text-[10px] font-medium tabular-nums',
-                        overdue ? 'text-destructive' : 'text-muted-foreground',
+                        'inline-flex min-h-[1.625rem] items-center gap-1.5 rounded-full border px-2.5 text-xs font-bold leading-none tabular-nums',
+                        overdue
+                          ? 'border-destructive/50 bg-destructive/20 text-destructive'
+                          : 'border-border/80 bg-card/70 text-foreground',
                       )}
                     >
-                      <HugeiconsIcon
-                        icon={overdue ? AlertCircleIcon : Clock01Icon}
-                        size={10}
-                      />
+                      <span className="inline-flex items-center justify-center leading-none translate-y-px" aria-hidden="true">
+                        <HugeiconsIcon
+                          icon={overdue ? AlertCircleIcon : Clock01Icon}
+                          size={13}
+                        />
+                      </span>
                       {time || allDay || date}
                     </span>
                   )}
                   <button
                     type="button"
                     onClick={(e) => handleDeleteClick(e, task)}
-                    disabled={isDeleting || isPending}
+                    disabled={isBusy}
                     className={cn(
                       'p-1.5 rounded-sm',
-                      'text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10',
+                      'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
                       'transition-colors cursor-pointer',
                       'opacity-0 group-hover/task:opacity-100 focus:opacity-100',
-                      (isDeleting || isPending) && 'opacity-50 cursor-not-allowed',
+                      isDeleting && 'opacity-100',
+                      isBusy && 'opacity-50 cursor-not-allowed',
                     )}
                     title={t.widgets.todaysTasks.moveToRecycleBin}
                     aria-label={t.widgets.todaysTasks.deleteAria}
@@ -342,6 +390,19 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmDeleteTask !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmDeleteTask(null)
+          }
+        }}
+        title={t.widgets.todaysTasks.confirmDeleteTitle}
+        description={t.widgets.todaysTasks.confirmDeleteDescription.replace('{title}', confirmDeleteTask?.title ?? '')}
+        confirmLabel={t.widgets.todaysTasks.moveToRecycleBin}
+        onConfirm={handleConfirmDelete}
+        isPending={isPending && deletingId !== null}
+      />
     </div>
   )
 }

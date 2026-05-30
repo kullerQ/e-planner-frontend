@@ -30,7 +30,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Toaster />
           </ThemeProvider>
         </LocaleProvider>
-      </body>
+      {/* impeccable-live-start */}
+<script src="http://localhost:8400/live.js"></script>
+{/* impeccable-live-end */}
+</body>
     </html>
   )
 }

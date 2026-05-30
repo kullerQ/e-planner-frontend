@@ -707,13 +707,13 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
         side="right"
         className={cn(
           'w-full max-w-lg p-0',
-          'bg-background/90 backdrop-blur-md border-l border-border/60',
+          'bg-background/95 backdrop-blur-md border-l border-border/70',
           'data-[state=open]:duration-300 data-[state=open]:ease-out',
           'data-[state=closed]:duration-300 data-[state=closed]:ease-out'
         )}
       >
         <div className="flex h-full flex-col">
-          <SheetHeader className="space-y-0 border-b border-border/50 px-5 pb-3 pt-5">
+          <SheetHeader className="space-y-0 border-b border-border/60 px-5 pb-4 pt-4">
             <SheetTitle className="text-base">{mode === 'create' ? t.tasks.createTitle : t.tasks.editTitle}</SheetTitle>
             <SheetDescription className="sr-only">
               {mode === 'create'
@@ -722,7 +722,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
             <div className="space-y-1">
               <Input
                 ref={titleRef}
@@ -744,8 +744,8 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                 }}
                 placeholder={t.tasks.titlePlaceholder}
                 className={cn(
-                  'h-12 rounded-none border-0 border-b-2 border-border/60 bg-transparent px-2 text-xl font-semibold shadow-none transition-colors',
-                  'placeholder:text-muted-foreground/60',
+                  'h-12 rounded-md border border-border/70 bg-background px-3 text-lg font-semibold shadow-none transition-colors',
+                  'placeholder:text-muted-foreground',
                   'hover:border-border focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0'
                 )}
               />
@@ -754,10 +754,10 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
               ) : null}
             </div>
 
-            <div className="space-y-4 rounded-lg border border-border/60 bg-card/80 p-3 backdrop-blur-sm">
+            <div className="space-y-5 rounded-lg border border-border/60 bg-card/85 p-4 backdrop-blur-sm">
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">{t.tasks.statusLabel}</p>
+                  <p className="text-sm font-medium text-foreground/85">{t.tasks.statusLabel}</p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
@@ -806,7 +806,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{t.tasks.dueDate}</p>
+                <p className="text-sm font-medium text-foreground/85">{t.tasks.dueDate}</p>
                 <div className="relative">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -889,7 +889,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{t.tasks.tags}</p>
+                <p className="text-sm font-medium text-foreground/85">{t.tasks.tags}</p>
                 <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-border/60 bg-background p-2">
                   {draft.tagIds.map((tagId) => {
                     const tag = tagsById.get(tagId)
@@ -1076,7 +1076,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{t.tasks.group}</p>
+                <p className="text-sm font-medium text-foreground/85">{t.tasks.group}</p>
                 <Popover>
                   <PopoverTrigger asChild>
                     <button

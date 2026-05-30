@@ -39,12 +39,13 @@ export function SidebarNav({ items, collapsed, className }: SidebarNavProps) {
           active
             ? collapsed
               ? 'bg-primary/10 text-primary'
-              : 'border-l-2 border-primary bg-primary/10 text-primary'
+              : 'bg-primary/10 text-primary ring-1 ring-primary/30'
             : 'text-foreground hover:bg-muted/50'
         )
         const labelClasses = cn(
-          'overflow-hidden whitespace-nowrap text-left transition-opacity duration-150',
-          collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+          'overflow-hidden whitespace-nowrap text-left',
+          'motion-safe:transition-[opacity,max-width] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
+          collapsed ? 'max-w-0 opacity-0' : 'max-w-full opacity-100'
         )
 
         const linkNode = (

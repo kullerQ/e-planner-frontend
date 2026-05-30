@@ -20,6 +20,7 @@ interface ActivityGraphWidgetProps {
 const CELL_SIZE = 16 // px (square)
 const CELL_GAP = 3   // px
 const DAY_LABEL_LANE_WIDTH = 36 // w-7 (28px) + gap-2 (8px)
+const MICRO_META_CLASS = 'text-[10px] font-medium leading-none tracking-[0.08em] text-muted-foreground'
 
 function getIntensityClass(count: number): string {
   if (count === 0) return 'bg-muted/60'
@@ -135,21 +136,42 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
   useEffect(() => {
     const el = measureRef.current
     if (!el) return
+
+    const applyWidth = (rawWidth: number) => {
+      const next = Math.max(0, rawWidth - DAY_LABEL_LANE_WIDTH)
+      setGridWidth((prev) => (prev === next ? prev : next))
+    }
+
+    // Apply width only after resize settles. This prevents expensive graph
+    // recomputation while the sidebar fold/unfold animation is running.
+    const RESIZE_SETTLE_MS = 180
+    let latestWidth = el.getBoundingClientRect().width
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
-      setGridWidth(Math.max(0, entry.contentRect.width - DAY_LABEL_LANE_WIDTH))
+      latestWidth = entry.contentRect.width
+      if (settleTimer) clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => {
+        applyWidth(latestWidth)
+      }, RESIZE_SETTLE_MS)
     })
     ro.observe(el)
-    // Initial measurement
-    setGridWidth(Math.max(0, el.getBoundingClientRect().width - DAY_LABEL_LANE_WIDTH))
-    return () => ro.disconnect()
+    // Initial measurement (synchronous so first paint is correct)
+    applyWidth(latestWidth)
+    return () => {
+      if (settleTimer) clearTimeout(settleTimer)
+      ro.disconnect()
+    }
   }, [])
 
   const weeksToShow = useMemo(() => {
     if (gridWidth <= 0) return 26
     const perWeek = CELL_SIZE + CELL_GAP
-    return Math.max(8, Math.min(53, Math.floor((gridWidth + CELL_GAP) / perWeek)))
+    // Keep a lower bound for small layouts, but allow wider viewports to show
+    // additional history columns. The previous hard cap (53) prevented the graph
+    // from adapting when the sidebar folded if width was already above that cap.
+    return Math.max(8, Math.min(156, Math.floor((gridWidth + CELL_GAP) / perWeek)))
   }, [gridWidth])
 
   const completionMap = useMemo(() => buildCompletionMap(activityData), [activityData])
@@ -164,6 +186,7 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
     () => weeks.reduce((s, w) => s + w.reduce((s2, d) => s2 + d.count, 0), 0),
     [weeks],
   )
+  const totalPluralLabel = totalCompleted === 1 ? t.widgets.activityGraph.task : t.widgets.activityGraph.tasks
 
   const dayLabels = useMemo(() => {
     const arr: string[] = []
@@ -190,25 +213,107 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
     return out
   }, [weeks])
 
-  const gridStyle: React.CSSProperties = {
-    gridTemplateColumns: `repeat(${weeks.length}, ${CELL_SIZE}px)`,
-    gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
-    gap: `${CELL_GAP}px`,
-  }
-
   const fullGridHeight = 7 * CELL_SIZE + 6 * CELL_GAP
   const fullGridWidth =
     weeks.length * CELL_SIZE + Math.max(0, weeks.length - 1) * CELL_GAP
 
   const isLoading = gridWidth <= 0
 
+  // Heavy block: day-label column + the full cell grid (up to ~371 tooltip
+  // nodes). Memoized so it only rebuilds when the column count (weeksToShow ->
+  // weeks) or locale actually changes — NOT on every transient width update
+  // during the sidebar fold animation.
+  const gridBlock = useMemo(() => {
+    const gridStyle: React.CSSProperties = {
+      gridTemplateColumns: `repeat(${weeks.length}, ${CELL_SIZE}px)`,
+      gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
+      gap: `${CELL_GAP}px`,
+    }
+
+    return (
+      <div className="flex items-start gap-2">
+        <div className="flex flex-col shrink-0" style={{ gap: `${CELL_GAP}px` }}>
+          {dayLabels.map((label, i) => (
+            <span
+              key={i}
+              className={`text-right pr-1 w-7 ${MICRO_META_CLASS}`}
+              style={{ height: `${CELL_SIZE}px`, lineHeight: `${CELL_SIZE}px` }}
+            >
+              {i % 2 === 1 ? label : ''}
+            </span>
+          ))}
+        </div>
+
+        {/* Wrapper so year delimiters can be absolutely positioned over the grid */}
+        <div className="relative shrink-0" style={{ width: `${fullGridWidth}px` }}>
+          {yearDelimiters.map(({ weekIndex, year }) => {
+            const left = weekIndex * (CELL_SIZE + CELL_GAP) - CELL_GAP / 2
+            return (
+              <div
+                key={year}
+                className="absolute top-0 z-10 pointer-events-none flex flex-col items-center -translate-x-1/2"
+                style={{ left: `${left}px`, height: `${fullGridHeight}px` }}
+              >
+                <span className="-mt-[18px] mb-0.5 rounded-sm bg-primary/20 px-1 py-px text-[10px] font-semibold leading-none tracking-[0.08em] text-primary">
+                  {year}
+                </span>
+                <div
+                  className="w-px bg-gradient-to-b from-primary/60 via-primary/30 to-primary/10"
+                  style={{ height: `${fullGridHeight}px` }}
+                />
+              </div>
+            )
+          })}
+
+          <div className="grid" style={gridStyle}>
+            {weeks.map((week, wi) =>
+              week.map((day, di) => {
+                if (day.isFuture) {
+                  return (
+                    <div
+                      key={day.key}
+                      aria-hidden
+                      style={{ gridColumn: wi + 1, gridRow: di + 1 }}
+                    />
+                  )
+                }
+                return (
+                  <Tooltip key={day.key}>
+                    <TooltipTrigger asChild>
+                      <div
+                        style={{ gridColumn: wi + 1, gridRow: di + 1 }}
+                        className={`rounded-[3px] cursor-default transition-all hover:ring-2 hover:ring-primary/40 ${getIntensityClass(day.count)}`}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs">
+                        {t.widgets.activityGraph.completedText
+                          .replace('{date}', formatActivityDate(day.date, locale))
+                          .replace('{count}', String(day.count))
+                          .replace('{plural}', day.count === 1 ? t.widgets.activityGraph.task : t.widgets.activityGraph.tasks)}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              }),
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }, [weeks, fullGridWidth, fullGridHeight, yearDelimiters, dayLabels, locale, t])
+
   return (
     <div className="flex h-full flex-col gap-2.5">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-semibold text-foreground">{t.widgets.activityGraph.title}</span>
-          <span className="text-xs text-muted-foreground">
-            {isLoading ? t.widgets.activityGraph.loading : `${totalCompleted} ${totalCompleted === 1 ? t.widgets.activityGraph.task : t.widgets.activityGraph.tasks} completed`}
+          <span className="text-xs font-medium text-muted-foreground">
+            {isLoading
+              ? t.widgets.activityGraph.loading
+              : t.widgets.activityGraph.taskCompleted
+                .replace('{count}', String(totalCompleted))
+                .replace('{plural}', totalPluralLabel)}
           </span>
         </div>
       </div>
@@ -234,7 +339,7 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
                     return (
                       <span
                         key={`${m.weekIndex}-${m.label}`}
-                        className="absolute text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70 leading-none -translate-x-1/2"
+                        className={`absolute uppercase -translate-x-1/2 ${MICRO_META_CLASS}`}
                         style={{ left: `${center}px` }}
                       >
                         {m.label}
@@ -245,77 +350,9 @@ export function ActivityGraphWidget({ activityData = [] }: ActivityGraphWidgetPr
               </div>
 
           {/* Day labels + grid (with year delimiters) */}
-          <div className="flex items-start gap-2">
-            <div
-              className="flex flex-col shrink-0"
-              style={{ gap: `${CELL_GAP}px` }}
-            >
-              {dayLabels.map((label, i) => (
-                <span
-                  key={i}
-                  className="text-[9px] text-muted-foreground/70 font-medium leading-none text-right pr-1 w-7"
-                  style={{ height: `${CELL_SIZE}px`, lineHeight: `${CELL_SIZE}px` }}
-                >
-                  {i % 2 === 1 ? label : ''}
-                </span>
-              ))}
-            </div>
-
-            {/* Wrapper so year delimiters can be absolutely positioned over the grid */}
-            <div className="relative shrink-0" style={{ width: `${fullGridWidth}px` }}>
-              {yearDelimiters.map(({ weekIndex, year }) => {
-                const left = weekIndex * (CELL_SIZE + CELL_GAP) - CELL_GAP / 2
-                return (
-                  <div
-                    key={year}
-                    className="absolute top-0 z-10 pointer-events-none flex flex-col items-center -translate-x-1/2"
-                    style={{ left: `${left}px`, height: `${fullGridHeight}px` }}
-                  >
-                    <span className="-mt-[18px] mb-0.5 rounded-sm bg-primary/15 px-1 py-px text-[9px] font-semibold tracking-wider text-primary leading-none">
-                      {year}
-                    </span>
-                    <div
-                      className="w-px bg-gradient-to-b from-primary/60 via-primary/30 to-primary/10"
-                      style={{ height: `${fullGridHeight}px` }}
-                    />
-                  </div>
-                )
-              })}
-
-              <div className="grid" style={gridStyle}>
-                {weeks.map((week, wi) =>
-                  week.map((day, di) => {
-                    if (day.isFuture) {
-                      return (
-                        <div
-                          key={day.key}
-                          aria-hidden
-                          style={{ gridColumn: wi + 1, gridRow: di + 1 }}
-                        />
-                      )
-                    }
-                    return (
-                      <Tooltip key={day.key}>
-                        <TooltipTrigger asChild>
-                          <div
-                            style={{ gridColumn: wi + 1, gridRow: di + 1 }}
-                            className={`rounded-[3px] cursor-default transition-all hover:ring-2 hover:ring-primary/40 ${getIntensityClass(day.count)}`}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p className="text-xs">
-                            {formatActivityDate(day.date, locale)} — {day.count} {day.count !== 1 ? t.widgets.activityGraph.tasks : t.widgets.activityGraph.task} completed
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )
-                  }),
-                )}
-              </div>
-            </div>
-          </div>
+          {gridBlock}
           {/* Legend */}
-          <div className="flex items-center justify-end gap-1.5 text-[9px] text-muted-foreground shrink-0 mt-5">
+          <div className="mt-5 flex shrink-0 items-center justify-end gap-1.5 text-[10px] font-medium text-muted-foreground">
             <span>{t.widgets.activityGraph.less}</span>
             <div className="size-2.5 rounded-[2px] bg-muted/60" />
             <div className="size-2.5 rounded-[2px] bg-primary/30" />

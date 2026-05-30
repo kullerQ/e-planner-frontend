@@ -5,6 +5,12 @@
 
 :root {
   --radius: 0.5rem;
+  --control-sm: 2.25rem;
+  --control-md: 2.5rem;
+  --control-lg: 2.75rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.25rem;
   --cal-task-tint: 22%;
   --cal-task-tint-hover: 42%;
   --cal-task-neutral: hsl(240 4.8% 95.9%);
@@ -20,7 +26,7 @@
   --secondary: hsl(240 4.8% 95.9%);
   --secondary-foreground: hsl(240 5.9% 10%);
   --muted: hsl(240 5% 91%);
-  --muted-foreground: hsl(240 3.8% 46.1%);
+  --muted-foreground: hsl(240 4.2% 40.5%);
   --accent: hsl(240 5% 91%);
   --accent-foreground: hsl(240 5.9% 10%);
   --destructive: hsl(0 84.2% 60.2%);
@@ -46,7 +52,7 @@
   --secondary: hsl(240 3.7% 15.9%);
   --secondary-foreground: hsl(0 0% 98%);
   --muted: hsl(0 0% 15%);
-  --muted-foreground: hsl(240 5% 64.9%);
+  --muted-foreground: hsl(240 6% 72%);
   --accent: hsl(12 6.5% 15.1%);
   --accent-foreground: hsl(0 0% 98%);
   --destructive: hsl(0 62.8% 30.6%);
@@ -86,10 +92,24 @@
   body {
     font-family: var(--font-inter), system-ui, sans-serif;
     @apply bg-background text-foreground;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
+
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]) {
     cursor: pointer;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 24%, var(--background));
+    color: var(--foreground);
+  }
+
+  :where(a, button, input, textarea, [role="button"], [role="tab"], [role="menuitem"], [role="option"]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
@@ -111,12 +131,12 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(var(--border) / 0.6);
+  background: color-mix(in oklab, var(--border) 65%, transparent);
   border-radius: 2px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
+  background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
 }
 
 .task-notes-editor .cm-editor {

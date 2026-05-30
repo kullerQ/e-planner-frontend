@@ -26,7 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <AppSidebar user={user} />
-      <main className="flex-1 overflow-hidden">{children}</main>
+      <main className="flex-1 overflow-hidden [contain:layout_paint]">{children}</main>
       <div className="contents">
         <DashboardTaskSheetHost tasks={tasks} groups={sortedGroups} tags={tags} />
       </div>

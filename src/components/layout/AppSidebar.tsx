@@ -105,8 +105,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'h-full shrink-0 border-r border-border/50 bg-background/80 backdrop-blur-md',
-          'flex flex-col transition-[width] duration-200 ease-out',
+          'h-full shrink-0 border-r border-border/50 bg-background',
+          'flex flex-col overflow-hidden',
+          'motion-safe:transition-[width] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
           effectiveCollapsed
             ? 'w-[56px] md:w-[200px] lg:w-[56px]'
             : 'w-[240px] md:w-[200px] lg:w-[240px]'
@@ -120,8 +121,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
         >
           <p
             className={cn(
-              'text-sm font-semibold text-foreground transition-opacity duration-150',
-              effectiveCollapsed ? 'pointer-events-none w-0 overflow-hidden opacity-0' : 'w-auto opacity-100'
+              'overflow-hidden whitespace-nowrap text-sm font-semibold text-foreground',
+              'motion-safe:transition-[opacity,max-width] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
+              effectiveCollapsed ? 'max-w-0 opacity-0 pointer-events-none' : 'max-w-full opacity-100'
             )}
           >
             E-Planner

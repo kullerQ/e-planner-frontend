@@ -48,6 +48,12 @@ export function DashboardClient({ tasks, phrase, attribution, activityData }: Da
     )
   }, [])
 
+  const handleTaskRestored = useCallback((taskId: string) => {
+    setOptimisticTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, isDeleted: false } : t))
+    )
+  }, [])
+
   const handleRefresh = useCallback(() => {
     router.refresh()
   }, [router])
@@ -64,7 +70,7 @@ export function DashboardClient({ tasks, phrase, attribution, activityData }: Da
           )}
         </div>
       </div>
-      <WidgetCanvas tasks={optimisticTasks} phrase={phrase} attribution={attribution} activityData={activityData} onStatusUpdated={handleTaskStatusUpdated} onTaskDeleted={handleTaskDeleted} onRefresh={handleRefresh} />
+      <WidgetCanvas tasks={optimisticTasks} phrase={phrase} attribution={attribution} activityData={activityData} onStatusUpdated={handleTaskStatusUpdated} onTaskDeleted={handleTaskDeleted} onTaskRestored={handleTaskRestored} onRefresh={handleRefresh} />
     </>
   )
 }

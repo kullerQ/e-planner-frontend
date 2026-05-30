@@ -1,7 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
-import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons'
+import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { formatMonthLong, formatWeekdayShort } from '@/lib/i18n/calendarLabels'
 import { useI18n } from '@/lib/messages'
@@ -21,11 +19,11 @@ function getFirstDayOfMonth(year: number, month: number): number {
 }
 
 export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
-  const { t, locale } = useI18n()
+  const { locale } = useI18n()
   const today = new Date()
   const weekStartsOn = useWeekStartsOn()
-  const [viewYear, setViewYear] = useState(today.getFullYear())
-  const [viewMonth, setViewMonth] = useState(today.getMonth())
+  const viewYear = today.getFullYear()
+  const viewMonth = today.getMonth()
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
   const firstDayDow = getFirstDayOfMonth(viewYear, viewMonth)
@@ -57,24 +55,6 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
       return acc
     }, {})
 
-  function prevMonth() {
-    if (viewMonth === 0) {
-      setViewMonth(11)
-      setViewYear((y) => y - 1)
-    } else {
-      setViewMonth((m) => m - 1)
-    }
-  }
-
-  function nextMonth() {
-    if (viewMonth === 11) {
-      setViewMonth(0)
-      setViewYear((y) => y + 1)
-    } else {
-      setViewMonth((m) => m + 1)
-    }
-  }
-
   const cells: (number | null)[] = [
     ...Array.from({ length: firstDay }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -89,28 +69,12 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex flex-col">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground">
             {viewYear}
           </span>
           <span className="text-sm font-semibold text-foreground leading-tight">
             {monthTitle}
           </span>
-        </div>
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={prevMonth}
-            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={t.widgets.monthCalendar.previousMonth}
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
-          </button>
-          <button
-            onClick={nextMonth}
-            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={t.widgets.monthCalendar.nextMonth}
-          >
-            <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
-          </button>
         </div>
       </div>
 
@@ -118,7 +82,7 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
         {orderedWeekDays.map((d, idx) => (
           <div
             key={`${idx}-${d}`}
-            className="text-center text-[9px] text-muted-foreground/70 font-medium uppercase tracking-wider pb-1"
+            className="pb-1 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground"
           >
             {d}
           </div>
@@ -130,10 +94,10 @@ export function MonthCalendarWidget({ tasks = [] }: MonthCalendarWidgetProps) {
               <>
                 <div
                   className={cn(
-                    'flex size-6 items-center justify-center rounded-full text-[11px] leading-none transition-colors',
+                    'flex size-6 items-center justify-center rounded-full text-[11px] leading-none',
                     isToday(day)
                       ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
-                      : 'text-foreground/90 hover:bg-muted/60'
+                      : 'text-foreground'
                   )}
                 >
                   {day}

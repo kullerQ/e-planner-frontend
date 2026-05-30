@@ -22,14 +22,13 @@ export function CalendarTaskPill({ task, group, onClick }: CalendarTaskPillProps
         onClick()
       }}
       className={cn(
-        'w-full text-left rounded-md px-2 py-1 text-xs font-medium truncate cursor-pointer',
-        'border border-l-4 transition-colors'
+        'w-full text-left rounded-md px-2 py-1 text-xs font-medium cursor-pointer',
+        'border transition-colors'
       )}
       style={{
-        borderLeftColor: group ? groupColor : 'var(--muted-foreground)',
-        borderTopColor: 'var(--border)',
-        borderRightColor: 'var(--border)',
-        borderBottomColor: 'var(--border)',
+        borderColor: group
+          ? `color-mix(in oklab, ${groupColor} 32%, var(--border))`
+          : 'var(--border)',
         backgroundColor: group
           ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint), var(--card))`
           : 'var(--cal-task-neutral)',
@@ -46,7 +45,14 @@ export function CalendarTaskPill({ task, group, onClick }: CalendarTaskPillProps
           : 'var(--cal-task-neutral)'
       }}
     >
-      {task.title}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: group ? groupColor : 'var(--muted-foreground)' }}
+          aria-hidden="true"
+        />
+        <span className="truncate">{task.title}</span>
+      </span>
     </button>
   )
 }
@@ -89,16 +95,15 @@ export function CalendarTaskBlock({
         onClick()
       }}
       className={cn(
-        'absolute left-0 right-1 rounded-md px-2 py-1 text-xs font-medium truncate cursor-pointer pointer-events-auto',
-        'border border-l-4 transition-colors z-10'
+        'absolute left-0 right-1 rounded-md px-2 py-1 text-xs font-medium cursor-pointer pointer-events-auto',
+        'border transition-colors z-10'
       )}
       style={{
         top: `calc(${slotTopPercent}% + (${slotHeightPercent}% - ${totalGaps}px) / ${groupSize} * ${stackIndex} + ${stackIndex * GAP_PX}px)`,
         height: `calc((${slotHeightPercent}% - ${totalGaps}px) / ${groupSize})`,
-        borderLeftColor: group ? groupColor : 'var(--muted-foreground)',
-        borderTopColor: 'var(--border)',
-        borderRightColor: 'var(--border)',
-        borderBottomColor: 'var(--border)',
+        borderColor: group
+          ? `color-mix(in oklab, ${groupColor} 32%, var(--border))`
+          : 'var(--border)',
         backgroundColor: group
           ? `color-mix(in oklab, ${groupColor} var(--cal-task-tint), var(--card))`
           : 'var(--cal-task-neutral)',
@@ -115,7 +120,14 @@ export function CalendarTaskBlock({
           : 'var(--cal-task-neutral)'
       }}
     >
-      {task.title}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: group ? groupColor : 'var(--muted-foreground)' }}
+          aria-hidden="true"
+        />
+        <span className="truncate">{task.title}</span>
+      </span>
     </button>
   )
 }
