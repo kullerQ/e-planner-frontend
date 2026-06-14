@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Calendar03Icon,
@@ -26,6 +26,10 @@ interface TaskRowProps {
   group: TaskGroup | null
   isHiddenBySearch: boolean
   searchQuery: string
+  isNew?: boolean
+  isPrevSelected?: boolean
+  isNextSelected?: boolean
+  onHighlightFinished?: (taskId: string) => void
   onTaskStatusOptimistic?: (taskId: string, status: TaskStatus) => void
   onTaskDeleted?: (taskId: string) => void
   onTaskRestored?: (task: Task) => void
@@ -61,6 +65,10 @@ export function TaskRow({
   group,
   isHiddenBySearch,
   searchQuery,
+  isNew = false,
+  isPrevSelected = false,
+  isNextSelected = false,
+  onHighlightFinished,
   onTaskStatusOptimistic,
   onTaskDeleted,
   onTaskRestored,
@@ -88,8 +96,11 @@ export function TaskRow({
   const [statusError, setStatusError] = useState<string | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const rowRef = useRef<HTMLDivElement>(null)
   const displayStatus = statusOverride ?? task.status
   const isSelected = selectedIds.has(task.id)
+  const isSelectionCollapsed = isSelected && isPrevSelected
+  const isSelectionJoinedBelow = isSelected && isNextSelected
   const groupAccentColor = group !== null ? group.colorHex : 'var(--border)'
   const hiddenTagCount = Math.max(0, task.tags.length - 2)
   const isTaskOverdue = isOverdue(task.dueDate)
@@ -100,6 +111,27 @@ export function TaskRow({
       clearStatusOverride(task.id)
     }
   }, [clearStatusOverride, statusOverride, task.id, task.status])
+
+  useEffect(() => {
+    if (!isNew) {
+      return
+    }
+
+    const node = rowRef.current
+    if (node === null) {
+      return
+    }
+
+    function handleAnimationEnd(event: AnimationEvent) {
+      if (event.animationName !== 'task-highlight-pop') {
+        return
+      }
+      onHighlightFinished?.(task.id)
+    }
+
+    node.addEventListener('animationend', handleAnimationEnd)
+    return () => node.removeEventListener('animationend', handleAnimationEnd)
+  }, [isNew, onHighlightFinished, task.id])
 
   function handleOpenTask() {
     openTaskSheet(task.id)
@@ -204,6 +236,7 @@ export function TaskRow({
   return (
     <>
       <div
+        ref={rowRef}
         role="button"
         tabIndex={0}
         onClick={handleRowClick}
@@ -214,14 +247,28 @@ export function TaskRow({
           }
         }}
         className={cn(
-          'group min-h-[44px] py-2.5 px-4 border-l-[3px] border-b border-border/40 rounded-md',
-          'flex items-center gap-3 transition-colors',
-          'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-          isSelected && 'ring-2 ring-inset ring-ring/80',
+          'task-selection-row group relative min-h-[44px] py-2.5 px-4 border border-border/50 border-l-[3px] rounded-md',
+          'bg-card shadow-sm',
+          'flex items-center gap-3',
+          'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+          isSelectionCollapsed ? '-mt-2' : 'mt-0',
+          isSelectionCollapsed && 'rounded-t-none border-t-transparent',
+          isSelected && isNextSelected && 'rounded-b-none',
+          isNew && 'task-highlight',
           isHiddenBySearch && 'hidden'
         )}
         style={{ borderLeftColor: groupAccentColor }}
       >
+        <div
+          aria-hidden="true"
+          className={cn(
+            'task-selection-outline pointer-events-none absolute -inset-px z-10 rounded-md border-2',
+            'border-l-ring border-r-ring',
+            isSelected ? 'opacity-100' : 'opacity-0',
+            isSelectionCollapsed ? 'border-t-transparent rounded-t-none' : 'border-t-ring',
+            isSelectionJoinedBelow ? 'border-b-transparent rounded-b-none' : 'border-b-ring'
+          )}
+        />
       <button
         type="button"
         onClick={(event) => {

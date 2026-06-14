@@ -45,6 +45,7 @@ import {
 } from '@/stores/useFilterStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useSelectionStore } from '@/stores/useSelectionStore'
+import { useTaskHighlightStore } from '@/stores/useTaskHighlightStore'
 import { useDebounce } from '@/hooks/useDebounce'
 import { toast } from 'sonner'
 import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
@@ -158,9 +159,15 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const selectedIds = useSelectionStore((state) => state.selectedIds)
   const enterSelectMode = useSelectionStore((state) => state.enterSelectMode)
   const exitSelectMode = useSelectionStore((state) => state.exitSelectMode)
+  const pendingHighlightIds = useTaskHighlightStore((state) => state.pendingIds)
+  const clearPendingHighlight = useTaskHighlightStore((state) => state.clearPending)
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks)
   const pendingRestoreIdsRef = useRef<Set<string>>(new Set())
   const deletedTaskSnapshotsRef = useRef<Map<string, Task>>(new Map())
+  const knownTaskIdsRef = useRef<Set<string> | null>(null)
+  const hasSeededKnownIdsRef = useRef(false)
+  const highlightTimeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [highlightIds, setHighlightIds] = useState<Set<string>>(() => new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [optimisticGroups, setOptimisticGroups] = useState<TaskGroup[]>(groups)
 
@@ -172,6 +179,47 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null)
   const [deleteGroupName, setDeleteGroupName] = useState('')
+
+  function addTaskHighlight(taskId: string) {
+    const existingTimeout = highlightTimeoutRefs.current.get(taskId)
+    if (existingTimeout !== undefined) {
+      clearTimeout(existingTimeout)
+    }
+
+    setHighlightIds((currentHighlightIds) => {
+      const nextHighlightIds = new Set(currentHighlightIds)
+      nextHighlightIds.add(taskId)
+      return nextHighlightIds
+    })
+
+    const timeoutId = setTimeout(() => {
+      setHighlightIds((currentHighlightIds) => {
+        const nextHighlightIds = new Set(currentHighlightIds)
+        nextHighlightIds.delete(taskId)
+        return nextHighlightIds
+      })
+      highlightTimeoutRefs.current.delete(taskId)
+    }, 5500)
+
+    highlightTimeoutRefs.current.set(taskId, timeoutId)
+  }
+
+  function clearTaskHighlight(taskId: string) {
+    const existingTimeout = highlightTimeoutRefs.current.get(taskId)
+    if (existingTimeout !== undefined) {
+      clearTimeout(existingTimeout)
+      highlightTimeoutRefs.current.delete(taskId)
+    }
+
+    setHighlightIds((currentHighlightIds) => {
+      if (!currentHighlightIds.has(taskId)) {
+        return currentHighlightIds
+      }
+      const nextHighlightIds = new Set(currentHighlightIds)
+      nextHighlightIds.delete(taskId)
+      return nextHighlightIds
+    })
+  }
 
   useEffect(() => {
     setOptimisticTasks((currentTasks) => {
@@ -193,7 +241,37 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
 
       return mergedTasks
     })
+
+    const serverTaskIds = new Set(tasks.map((task) => task.id))
+    if (!hasSeededKnownIdsRef.current) {
+      hasSeededKnownIdsRef.current = true
+      knownTaskIdsRef.current = serverTaskIds
+    } else {
+      const knownTaskIds = knownTaskIdsRef.current ?? new Set<string>()
+      for (const taskId of serverTaskIds) {
+        if (!knownTaskIds.has(taskId) && !pendingRestoreIdsRef.current.has(taskId)) {
+          addTaskHighlight(taskId)
+        }
+      }
+      knownTaskIdsRef.current = serverTaskIds
+    }
   }, [tasks])
+
+  useEffect(() => {
+    for (const taskId of pendingHighlightIds) {
+      addTaskHighlight(taskId)
+      clearPendingHighlight(taskId)
+    }
+  }, [pendingHighlightIds, clearPendingHighlight])
+
+  useEffect(() => {
+    const timeoutRefs = highlightTimeoutRefs.current
+    return () => {
+      for (const timeoutId of timeoutRefs.values()) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setOptimisticGroups(groups)
@@ -257,6 +335,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
       for (const task of restoredTasks) {
         if (!existingTaskIds.has(task.id)) {
           nextTasks.push(task)
+          addTaskHighlight(task.id)
         }
       }
       return nextTasks
@@ -279,6 +358,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
     const snapshot = deletedTaskSnapshotsRef.current.get(restoredTask.id) ?? restoredTask
     deletedTaskSnapshotsRef.current.delete(restoredTask.id)
     pendingRestoreIdsRef.current.add(snapshot.id)
+    addTaskHighlight(snapshot.id)
     setOptimisticTasks((currentTasks) => {
       if (currentTasks.some((task) => task.id === snapshot.id)) {
         return currentTasks
@@ -601,7 +681,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
             </Button>
           </section>
 
-          <section className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
+          <section className="rounded-md border border-border/50 bg-muted/20 p-2">
             {!hasHydrated ? (
               <div className="p-6 text-sm text-muted-foreground">{t.taskList.loading}</div>
             ) : null}
@@ -715,20 +795,62 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                       </div>
                     ) : null}
 
-                    <div className={cn(isCollapsed && 'hidden')}>
-                      {groupedTaskList.map((task) => (
-                        <TaskRow
-                          key={task.id}
-                          task={task}
-                          group={task.groupId !== null ? (groupsById.get(task.groupId) ?? null) : null}
-                          isHiddenBySearch={debouncedQuery.length > 0 && !matchedTaskIds.has(task.id)}
-                          searchQuery={debouncedQuery}
-                          onTaskStatusOptimistic={handleTaskStatusOptimistic}
-                          onTaskDeleted={handleTaskDeleted}
-                          onTaskRestored={handleTaskRestored}
-                          onTaskRestoreSuccess={handleTaskRestoreSuccess}
-                        />
-                      ))}
+                    <div className={cn('flex flex-col gap-2', isCollapsed && 'hidden')}>
+                      {groupedTaskList.map((task, taskIndex) => {
+                        const isHiddenBySearch =
+                          debouncedQuery.length > 0 && !matchedTaskIds.has(task.id)
+                        const taskIsSelected = selectedIds.has(task.id)
+                        let isPrevSelected = false
+                        let isNextSelected = false
+
+                        if (taskIsSelected && !isHiddenBySearch) {
+                          for (let index = taskIndex - 1; index >= 0; index -= 1) {
+                            const previousTask = groupedTaskList[index]
+                            if (previousTask === undefined) {
+                              break
+                            }
+                            const isPreviousHidden =
+                              debouncedQuery.length > 0 && !matchedTaskIds.has(previousTask.id)
+                            if (isPreviousHidden) {
+                              continue
+                            }
+                            isPrevSelected = selectedIds.has(previousTask.id)
+                            break
+                          }
+
+                          for (let index = taskIndex + 1; index < groupedTaskList.length; index += 1) {
+                            const nextTask = groupedTaskList[index]
+                            if (nextTask === undefined) {
+                              break
+                            }
+                            const isNextHidden =
+                              debouncedQuery.length > 0 && !matchedTaskIds.has(nextTask.id)
+                            if (isNextHidden) {
+                              continue
+                            }
+                            isNextSelected = selectedIds.has(nextTask.id)
+                            break
+                          }
+                        }
+
+                        return (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            group={task.groupId !== null ? (groupsById.get(task.groupId) ?? null) : null}
+                            isHiddenBySearch={isHiddenBySearch}
+                            searchQuery={debouncedQuery}
+                            isNew={highlightIds.has(task.id)}
+                            isPrevSelected={isPrevSelected}
+                            isNextSelected={isNextSelected}
+                            onHighlightFinished={clearTaskHighlight}
+                            onTaskStatusOptimistic={handleTaskStatusOptimistic}
+                            onTaskDeleted={handleTaskDeleted}
+                            onTaskRestored={handleTaskRestored}
+                            onTaskRestoreSuccess={handleTaskRestoreSuccess}
+                          />
+                        )
+                      })}
                     </div>
                   </div>
                 )

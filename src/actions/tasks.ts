@@ -112,7 +112,7 @@ export async function updateTaskStatus(taskId: string, rawData: unknown): Promis
   revalidateTaskTags(parsedTaskId.data)
 }
 
-export async function createTask(rawData: unknown): Promise<void> {
+export async function createTask(rawData: unknown): Promise<string> {
   const { createTaskSchema } = await getTaskActionSchemas()
   const parsed = createTaskSchema.safeParse(rawData)
   if (!parsed.success) {
@@ -136,7 +136,9 @@ export async function createTask(rawData: unknown): Promise<void> {
   })
   await assertResponse(res, 'create task')
 
+  const createdTask = (await res.json()) as { id: string }
   revalidateTag('tasks', 'max')
+  return createdTask.id
 }
 
 export async function updateTask(taskId: string, rawData: unknown): Promise<void> {

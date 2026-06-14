@@ -42,6 +42,7 @@ import { buildValidationSchemas } from '@/lib/validation'
 import { softDeleteWithUndo } from '@/lib/tasks/softDeleteWithUndo'
 import { cn, randomGroupColor } from '@/lib/utils'
 import { useI18n } from '@/lib/messages'
+import { useTaskHighlightStore } from '@/stores/useTaskHighlightStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
@@ -193,6 +194,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const setStatusOverride = useTaskSheetStore((state) => state.setStatusOverride)
   const clearStatusOverride = useTaskSheetStore((state) => state.clearStatusOverride)
   const closeSheet = useTaskSheetStore((state) => state.close)
+  const requestTaskHighlight = useTaskHighlightStore((state) => state.requestHighlight)
   const weekStartsOn = useWeekStartsOn()
   const defaultStatus = useSettingsStore((state) => state.defaultStatus)
 
@@ -432,7 +434,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
     startTransition(async () => {
       try {
-        await createTask({
+        const createdTaskId = await createTask({
           title: validated.title,
           status: draft.status,
           priority: draft.priority,
@@ -441,6 +443,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
           tagIds: draft.tagIds,
           notes: draft.notes.length > 0 ? draft.notes : null,
         })
+        requestTaskHighlight(createdTaskId)
         toast.success(t.tasks.createSuccess)
         closeSheet()
         router.refresh()
@@ -688,7 +691,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
     if (mode === 'create') {
       try {
-        await createTask({
+        const createdTaskId = await createTask({
           title: validated.title,
           status: draft.status,
           priority: draft.priority,
@@ -697,6 +700,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
           tagIds: draft.tagIds,
           notes: draft.notes.length > 0 ? draft.notes : null,
         })
+        requestTaskHighlight(createdTaskId)
         toast.success(t.tasks.createSuccess)
         setConfirmCloseOpen(false)
         closeSheet()

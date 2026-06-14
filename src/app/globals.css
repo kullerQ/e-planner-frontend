@@ -13,8 +13,8 @@
   --space-lg: 1.25rem;
   --cal-task-tint: 22%;
   --cal-task-tint-hover: 42%;
-  --cal-task-neutral: hsl(240 4.8% 95.9%);
-  --cal-task-neutral-hover: hsl(240 5% 90%);
+  --cal-task-neutral: hsl(240 12% 95.9%);
+  --cal-task-neutral-hover: hsl(240 12% 90%);
   --background: hsl(0 0% 100%);
   --foreground: hsl(240 10% 3.9%);
   --card: hsl(0 0% 100%);
@@ -23,16 +23,16 @@
   --popover-foreground: hsl(240 10% 3.9%);
   --primary: hsl(142.1 76.2% 36.3%);
   --primary-foreground: hsl(355.7 100% 97.3%);
-  --secondary: hsl(240 4.8% 95.9%);
+  --secondary: hsl(240 12% 95.9%);
   --secondary-foreground: hsl(240 5.9% 10%);
-  --muted: hsl(240 5% 91%);
-  --muted-foreground: hsl(240 4.2% 40.5%);
-  --accent: hsl(240 5% 91%);
+  --muted: hsl(240 12% 91%);
+  --muted-foreground: hsl(240 9% 40.5%);
+  --accent: hsl(240 12% 91%);
   --accent-foreground: hsl(240 5.9% 10%);
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(240 5.9% 90%);
-  --input: hsl(240 5.9% 90%);
+  --border: hsl(240 13% 90%);
+  --input: hsl(240 13% 90%);
   --ring: hsl(142.1 76.2% 36.3%);
 }
 
@@ -146,4 +146,56 @@
 
 .task-notes-editor .cm-editor.cm-focused {
   outline: none;
+}
+
+@keyframes task-highlight-pop {
+  0% {
+    transform: scale(0.985);
+  }
+  45% {
+    transform: scale(1.018);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes task-highlight-color {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.task-highlight {
+  animation: task-highlight-pop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  transform-origin: center;
+}
+
+.task-highlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: color-mix(in oklab, var(--primary) 14%, var(--background));
+  animation: task-highlight-color 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.task-selection-outline {
+  transition-property: opacity, border-color, border-radius;
+  transition-duration: 280ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.task-selection-row {
+  transition-property: margin-top, border-radius, border-color, background-color;
+  transition-duration: 280ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
