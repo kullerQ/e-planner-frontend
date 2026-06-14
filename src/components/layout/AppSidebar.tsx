@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useSyncExternalStore } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -119,15 +120,17 @@ export function AppSidebar({ user }: AppSidebarProps) {
             effectiveCollapsed ? 'justify-center px-1' : 'justify-between px-4'
           )}
         >
-          <p
+          <Link
+            href="/dashboard"
             className={cn(
-              'overflow-hidden whitespace-nowrap text-sm font-semibold text-foreground',
-              'motion-safe:transition-[opacity,max-width] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
+              'overflow-hidden whitespace-nowrap rounded-sm text-sm font-semibold text-foreground',
+              'transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+              'motion-safe:transition-[opacity,max-width,color] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
               effectiveCollapsed ? 'max-w-0 opacity-0 pointer-events-none' : 'max-w-full opacity-100'
             )}
           >
             E-Planner
-          </p>
+          </Link>
           {effectiveCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>{toggleButton}</TooltipTrigger>

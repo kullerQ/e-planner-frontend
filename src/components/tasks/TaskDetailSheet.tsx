@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { TimePicker } from '@/components/ui/time-picker'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -44,6 +45,7 @@ import { cn, randomGroupColor } from '@/lib/utils'
 import { useI18n } from '@/lib/messages'
 import { useTaskHighlightStore } from '@/stores/useTaskHighlightStore'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
+import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import type { Tag, Task, TaskGroup, TaskStatus } from '@/types'
 
@@ -130,6 +132,29 @@ function isDateBeforeToday(date: Date): boolean {
   return date.getTime() < startOfToday().getTime()
 }
 
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+function isAllowedPastDueDay(
+  date: Date,
+  sheetMode: 'create' | 'edit',
+  baselineDueDate: string | null,
+): boolean {
+  if (sheetMode !== 'edit' || baselineDueDate === null) {
+    return false
+  }
+  const baselineDate = toDate(baselineDueDate)
+  if (!baselineDate || !isDateBeforeToday(baselineDate)) {
+    return false
+  }
+  return isSameDay(date, baselineDate)
+}
+
 function formatTimeInputFromDate(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
@@ -197,6 +222,10 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const requestTaskHighlight = useTaskHighlightStore((state) => state.requestHighlight)
   const weekStartsOn = useWeekStartsOn()
   const defaultStatus = useSettingsStore((state) => state.defaultStatus)
+  const storeGroups = useGroupsStore((state) => state.groups)
+  const storeGroupsInitialized = useGroupsStore((state) => state.initialized)
+  const addGroupToStore = useGroupsStore((state) => state.addGroup)
+  const remoteGroups = storeGroupsInitialized ? storeGroups : groups
 
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task] as const)), [tasks])
   const [loadedTask, setLoadedTask] = useState<Task | null>(null)
@@ -292,8 +321,8 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
   useEffect(() => {
     setAvailableGroups((current) => {
-      const remoteById = new Map(groups.map((group) => [group.id, group] as const))
-      const merged = [...groups]
+      const remoteById = new Map(remoteGroups.map((group) => [group.id, group] as const))
+      const merged = [...remoteGroups]
       for (const group of current) {
         if (!remoteById.has(group.id)) {
           merged.push(group)
@@ -301,7 +330,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
       }
       return merged.sort((left, right) => left.name.localeCompare(right.name))
     })
-  }, [groups])
+  }, [remoteGroups])
 
   useEffect(() => {
     if (!isOpen) {
@@ -354,6 +383,9 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     [availableGroups, draft.groupId]
   )
   const dueDateMinTime = useMemo(() => {
+    if (mode === 'edit' && draft.dueDate === baseline.dueDate) {
+      return undefined
+    }
     const baseDate = toDate(draft.dueDate)
     if (!baseDate) {
       return formatTimeInputFromDate(new Date())
@@ -365,7 +397,7 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
       return undefined
     }
     return formatTimeInputFromDate(new Date())
-  }, [draft.dueDate])
+  }, [baseline.dueDate, draft.dueDate, mode])
   const hasUnsavedChanges = useMemo(() => {
     return (
       draft.title !== baseline.title ||
@@ -411,7 +443,10 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
       return null
     }
 
-    if (draft.dueDate !== null) {
+    const dueDateChanged = draft.dueDate !== baseline.dueDate
+    const shouldValidateFutureDueDate = mode === 'create' || dueDateChanged
+
+    if (shouldValidateFutureDueDate && draft.dueDate !== null) {
       const dueDate = new Date(draft.dueDate)
       const nowAtMinute = new Date()
       nowAtMinute.setSeconds(0, 0)
@@ -602,6 +637,9 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
       }
       return [...current, created].sort((left, right) => left.name.localeCompare(right.name))
     })
+    if (!storeGroups.some((group) => group.id === created.id)) {
+      addGroupToStore(created)
+    }
     setDraftField('groupId', created.id)
   }
 
@@ -883,13 +921,19 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                       <Calendar
                         mode="single"
                         selected={toDate(draft.dueDate)}
-                        disabled={(date) => isDateBeforeToday(date)}
+                        disabled={(date) =>
+                          isDateBeforeToday(date) &&
+                          !isAllowedPastDueDay(date, mode, baseline.dueDate)
+                        }
                         onSelect={(nextDate) => {
                           if (!nextDate) {
                             setDraftField('dueDate', null)
                             return
                           }
-                          if (isDateBeforeToday(nextDate)) {
+                          if (
+                            isDateBeforeToday(nextDate) &&
+                            !isAllowedPastDueDay(nextDate, mode, baseline.dueDate)
+                          ) {
                             setFieldFailure('dueDate', t.tasks.dueDatePastError)
                             return
                           }
@@ -982,7 +1026,11 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                         <HugeiconsIcon icon={PlusSignIcon} size={14} />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-72 space-y-2">
+                    <PopoverContent
+                      align="start"
+                      className="w-72 space-y-2"
+                      onWheel={(event) => event.stopPropagation()}
+                    >
                       <Input
                         value={tagQuery}
                         onChange={(event) => setTagQuery(event.target.value)}
@@ -1002,7 +1050,11 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                         }}
                         placeholder={t.tasks.tagsSearch}
                       />
-                      <div className="max-h-40 space-y-1 overflow-y-auto">
+                      <ScrollArea
+                        className="h-40"
+                        onWheel={(event) => event.stopPropagation()}
+                      >
+                        <div className="space-y-1 pr-2">
                         {canCreateTagFromQuery ? (
                           <button
                             type="button"
@@ -1117,7 +1169,8 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                             {t.tasks.tagsEmpty}
                           </p>
                         ) : null}
-                      </div>
+                        </div>
+                      </ScrollArea>
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -1149,7 +1202,11 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                       <span className="truncate">{selectedGroup?.name ?? t.tasks.groupNone}</span>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] space-y-2">
+                  <PopoverContent
+                    align="start"
+                    className="w-[var(--radix-popover-trigger-width)] space-y-2"
+                    onWheel={(event) => event.stopPropagation()}
+                  >
                       <Input
                         value={groupQuery}
                         onChange={(event) => setGroupQuery(event.target.value)}
@@ -1169,7 +1226,11 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                         }}
                         placeholder={t.tasks.groupSearch}
                       />
-                      <div className="max-h-40 space-y-1 overflow-y-auto">
+                      <ScrollArea
+                        className="h-40"
+                        onWheel={(event) => event.stopPropagation()}
+                      >
+                        <div className="space-y-1 pr-2">
                         {canCreateGroupFromQuery ? (
                           <button
                             type="button"
@@ -1230,7 +1291,8 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
                         {visibleGroups.length === 0 && !canCreateGroupFromQuery ? (
                           <p className="px-2 py-1 text-sm text-muted-foreground">{t.tasks.groupEmpty}</p>
                         ) : null}
-                      </div>
+                        </div>
+                      </ScrollArea>
                   </PopoverContent>
                 </Popover>
                 {fieldError.groupId !== undefined ? (
