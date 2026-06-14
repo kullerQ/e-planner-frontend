@@ -11,8 +11,10 @@ import {
 import { toast } from 'sonner'
 import { restoreTask } from '@/actions/recycle-bin'
 import { softDeleteTask, updateTaskStatus } from '@/actions/tasks'
-import { StatusBadge } from '@/components/tasks/StatusBadge'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { StatusBadge, TASK_STATUS_STYLES } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { softDeleteWithUndo } from '@/lib/tasks/softDeleteWithUndo'
 import { cn, formatDueDate, isDueSoon, isOverdue } from '@/lib/utils'
 import { useI18n } from '@/lib/messages'
 import { useSelectionStore } from '@/stores/useSelectionStore'
@@ -27,6 +29,7 @@ interface TaskRowProps {
   onTaskStatusOptimistic?: (taskId: string, status: TaskStatus) => void
   onTaskDeleted?: (taskId: string) => void
   onTaskRestored?: (task: Task) => void
+  onTaskRestoreSuccess?: () => void
 }
 
 function escapeRegExp(value: string): string {
@@ -61,6 +64,7 @@ export function TaskRow({
   onTaskStatusOptimistic,
   onTaskDeleted,
   onTaskRestored,
+  onTaskRestoreSuccess,
 }: TaskRowProps) {
   const { t, locale } = useI18n()
 
@@ -82,6 +86,7 @@ export function TaskRow({
   const toggleSelection = useSelectionStore((state) => state.toggleSelection)
 
   const [statusError, setStatusError] = useState<string | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const displayStatus = statusOverride ?? task.status
   const isSelected = selectedIds.has(task.id)
@@ -129,6 +134,9 @@ export function TaskRow({
   }
 
   function handleRowClick() {
+    if (confirmDeleteOpen) {
+      return
+    }
     if (isSelecting) {
       toggleSelection(task.id)
       return
@@ -136,61 +144,84 @@ export function TaskRow({
     handleOpenTask()
   }
 
+  function handleConfirmDeleteOpenChange(open: boolean) {
+    setConfirmDeleteOpen(open)
+    useTaskSheetStore.getState().setDeleteConfirmTaskId(open ? task.id : null)
+  }
+
+  function handleForceCloseSheet() {
+    useTaskSheetStore.getState().closeForce()
+  }
+
   function handleQuickDelete(event: React.MouseEvent) {
     event.stopPropagation()
     if (isPending) {
       return
     }
+    setConfirmDeleteOpen(true)
+  }
 
-    const deletedTask = task
-    onTaskDeleted?.(task.id)
+  function handleConfirmDelete(): Promise<void> {
+    if (isPending) {
+      return Promise.resolve()
+    }
 
-    startTransition(async () => {
-      try {
-        await softDeleteTask(task.id)
-        toast.success(t.taskRow.deletedToast, {
-          action: {
-            label: t.taskRow.undo,
-            onClick: () => {
-              onTaskRestored?.(deletedTask)
-              startTransition(async () => {
-                try {
-                  await restoreTask(deletedTask.id)
-                } catch {
-                  onTaskDeleted?.(deletedTask.id)
-                  toast.error(t.taskRow.restoreError)
-                }
-              })
+    return new Promise((resolve) => {
+      startTransition(async () => {
+        try {
+          await softDeleteWithUndo({
+            task,
+            messages: {
+              deletedToast: t.taskRow.deletedToast,
+              undo: t.taskRow.undo,
+              deleteError: t.taskRow.deleteError,
+              restoreError: t.taskRow.restoreError,
             },
-          },
-        })
-      } catch {
-        onTaskRestored?.(deletedTask)
-        toast.error(t.taskRow.deleteError)
-      }
+            softDelete: softDeleteTask,
+            restore: restoreTask,
+            onOptimisticDelete: (deletedTask) => {
+              handleForceCloseSheet()
+              onTaskDeleted?.(deletedTask.id)
+            },
+            onOptimisticRestore: (restoredTask) => {
+              onTaskRestored?.(restoredTask)
+            },
+            onRestoreSuccess: () => {
+              onTaskRestoreSuccess?.()
+            },
+            onBeforeUndo: () => {
+              handleForceCloseSheet()
+            },
+          })
+        } finally {
+          handleConfirmDeleteOpenChange(false)
+          resolve()
+        }
+      })
     })
   }
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={handleRowClick}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          handleRowClick()
-        }
-      }}
-      className={cn(
-        'group min-h-[44px] py-2.5 px-4 border-l-[3px] border-b border-border/40 rounded-md',
-        'flex items-center gap-3 transition-colors',
-        'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-        isSelected && 'ring-2 ring-inset ring-ring/80',
-        isHiddenBySearch && 'hidden'
-      )}
-      style={{ borderLeftColor: groupAccentColor }}
-    >
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleRowClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            handleRowClick()
+          }
+        }}
+        className={cn(
+          'group min-h-[44px] py-2.5 px-4 border-l-[3px] border-b border-border/40 rounded-md',
+          'flex items-center gap-3 transition-colors',
+          'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+          isSelected && 'ring-2 ring-inset ring-ring/80',
+          isHiddenBySearch && 'hidden'
+        )}
+        style={{ borderLeftColor: groupAccentColor }}
+      >
       <button
         type="button"
         onClick={(event) => {
@@ -283,7 +314,13 @@ export function TaskRow({
                   )}
                   onClick={() => handleStatusChange(option.value)}
                 >
-                  <span>{option.label}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={cn('size-1.5 rounded-full', TASK_STATUS_STYLES[option.value].dot)}
+                      aria-hidden="true"
+                    />
+                    {option.label}
+                  </span>
                   {displayStatus === option.value ? <HugeiconsIcon icon={Checkmark} size={14} /> : null}
                 </button>
               ))}
@@ -307,6 +344,16 @@ export function TaskRow({
           <HugeiconsIcon icon={Delete02Icon} size={16} />
         </button>
       ) : null}
-    </div>
+      </div>
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={handleConfirmDeleteOpenChange}
+        title={t.tasks.deleteConfirmTitle}
+        description={t.tasks.deleteConfirmDescription.replace('{title}', task.title)}
+        confirmLabel={t.tasks.deleteConfirmAction}
+        onConfirm={handleConfirmDelete}
+        isPending={isPending}
+      />
+    </>
   )
 }

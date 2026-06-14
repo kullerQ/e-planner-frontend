@@ -10,7 +10,7 @@ interface StatusBadgeProps {
   className?: string
 }
 
-const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; dot: string }> = {
+export const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; dot: string }> = {
   todo: {
     bg: 'bg-secondary',
     text: 'text-secondary-foreground',
@@ -52,7 +52,7 @@ function StatusBadgeInner({ status, className }: StatusBadgeInnerProps) {
     completed: t.tasks.status.completed,
   }
 
-  const styles = STATUS_STYLES[status]
+  const styles = TASK_STATUS_STYLES[status]
 
   return (
     <span

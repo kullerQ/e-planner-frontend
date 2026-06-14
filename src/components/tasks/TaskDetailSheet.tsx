@@ -14,7 +14,9 @@ import {
 import { toast } from 'sonner'
 import { createGroup } from '@/actions/groups'
 import { createTag, deleteTag, renameTag } from '@/actions/tags'
+import { restoreTask } from '@/actions/recycle-bin'
 import { createTask, softDeleteTask, updateTask } from '@/actions/tasks'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { StatusBadge } from '@/components/tasks/StatusBadge'
 import { TaskNotesMarkdown } from '@/components/tasks/TaskNotesMarkdown'
 import { Button } from '@/components/ui/button'
@@ -37,6 +39,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { clientApiFetch } from '@/lib/api'
 import { useWeekStartsOn } from '@/lib/preferences'
 import { buildValidationSchemas } from '@/lib/validation'
+import { softDeleteWithUndo } from '@/lib/tasks/softDeleteWithUndo'
 import { cn, randomGroupColor } from '@/lib/utils'
 import { useI18n } from '@/lib/messages'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
@@ -181,6 +184,9 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const isOpen = useTaskSheetStore((state) => state.isOpen)
   const taskId = useTaskSheetStore((state) => state.taskId)
   const initialValues = useTaskSheetStore((state) => state.initialValues)
+  const forceClosePending = useTaskSheetStore((state) => state.forceClosePending)
+  const acknowledgeForceClose = useTaskSheetStore((state) => state.acknowledgeForceClose)
+  const closeSheetForce = useTaskSheetStore((state) => state.closeForce)
   const statusOverride = useTaskSheetStore((state) =>
     state.taskId === null ? undefined : state.statusOverrides[state.taskId]
   )
@@ -249,10 +255,20 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [editingTagName, setEditingTagName] = useState('')
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isTagMutationPending, startTagMutation] = useTransition()
   const [isGroupMutationPending, startGroupMutation] = useTransition()
   const titleRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      return
+    }
+    setConfirmCloseOpen(false)
+    setConfirmDeleteOpen(false)
+    setFieldError({})
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) {
@@ -485,14 +501,33 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
     if (taskId === null) {
       return
     }
+
+    const deleteTarget = sourceTask ?? { id: taskId, title: draft.title.trim() }
     startTransition(async () => {
-      try {
-        await softDeleteTask(taskId)
-        toast.info(t.tasks.movedToRecycle)
-        closeSheet()
+      const deleted = await softDeleteWithUndo({
+        task: deleteTarget,
+        messages: {
+          deletedToast: t.taskRow.deletedToast,
+          undo: t.taskRow.undo,
+          deleteError: t.taskRow.deleteError,
+          restoreError: t.taskRow.restoreError,
+        },
+        softDelete: softDeleteTask,
+        restore: restoreTask,
+        onDeleteSuccess: () => {
+          setConfirmDeleteOpen(false)
+        },
+        onBeforeUndo: () => {
+          closeSheetForce()
+        },
+        onRestoreSuccess: () => {
+          router.refresh()
+        },
+      })
+
+      if (deleted) {
+        closeSheetForce()
         router.refresh()
-      } catch {
-        setFieldFailure('submit', t.tasks.errorDelete)
       }
     })
   }
@@ -701,7 +736,19 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
   const sheetKey = taskId ?? 'create'
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => (open ? undefined : requestCloseSheet('outside'))}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) {
+          return
+        }
+        if (forceClosePending) {
+          acknowledgeForceClose()
+          return
+        }
+        requestCloseSheet('outside')
+      }}
+    >
       <SheetContent
         key={sheetKey}
         side="right"
@@ -1199,7 +1246,12 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
 
           <footer className="flex items-center justify-between gap-2 border-t border-border/50 px-5 py-4">
             {mode === 'edit' ? (
-              <Button type="button" variant="destructive" className="min-h-11" onClick={handleDelete}>
+              <Button
+                type="button"
+                variant="destructive"
+                className="min-h-11"
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
                 {t.tasks.deleteTask}
               </Button>
             ) : (
@@ -1267,6 +1319,15 @@ export function TaskDetailSheet({ tasks, groups, tags, onTaskUpdated }: TaskDeta
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={t.tasks.deleteConfirmTitle}
+        description={t.tasks.deleteConfirmDescription.replace('{title}', draft.title.trim())}
+        confirmLabel={t.tasks.deleteConfirmAction}
+        onConfirm={handleDelete}
+        isPending={isPending}
+      />
     </Sheet>
   )
 }

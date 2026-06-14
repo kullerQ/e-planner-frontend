@@ -8,8 +8,10 @@ import type { Task, TaskStatus } from '@/types'
 import { useTaskSheetStore } from '@/stores/useTaskSheetStore'
 import { updateTaskStatus, softDeleteTask } from '@/actions/tasks'
 import { restoreTask } from '@/actions/recycle-bin'
+import { TASK_STATUS_STYLES } from '@/components/tasks/StatusBadge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { softDeleteWithUndo } from '@/lib/tasks/softDeleteWithUndo'
 import { toast } from 'sonner'
 
 interface TodaysTasksWidgetProps {
@@ -77,12 +79,7 @@ function formatTaskDate(dueDate: string, locale: string): string {
   })
 }
 
-const STATUS_STYLE: Record<TaskStatus, { dot: string; text: string }> = {
-  todo: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
-  in_progress: { dot: 'bg-primary', text: 'text-primary' },
-  delayed: { dot: 'bg-amber-600 dark:bg-amber-400', text: 'text-amber-700 dark:text-amber-300' },
-  completed: { dot: 'bg-primary/70', text: 'text-primary' },
-}
+const STATUS_STYLE = TASK_STATUS_STYLES
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'delayed', 'completed']
 
@@ -137,12 +134,14 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
     e.stopPropagation()
     setOpenStatusId(null)
     if (newStatus === task.status) return
+    const previousStatus = task.status
     onStatusUpdated?.(task.id, newStatus)
     startTransition(async () => {
       try {
         await updateTaskStatus(task.id, { status: newStatus })
         onRefresh?.()
       } catch {
+        onStatusUpdated?.(task.id, previousStatus)
         toast.error(t.tasks.statusUpdateFailed)
       }
     })
@@ -163,36 +162,32 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
     }
 
     setDeletingId(task.id)
-    onTaskDeleted?.(task.id)
     startTransition(async () => {
-      try {
-        await softDeleteTask(task.id)
-        toast.success(t.taskRow.deletedToast, {
-          action: {
-            label: t.taskRow.undo,
-            onClick: () => {
-              onTaskRestored?.(task.id)
-              startTransition(async () => {
-                try {
-                  await restoreTask(task.id)
-                  onRefresh?.()
-                } catch {
-                  onTaskDeleted?.(task.id)
-                  toast.error(t.taskRow.restoreError)
-                }
-              })
-            },
-          },
-        })
-        setConfirmDeleteTask(null)
-        onRefresh?.()
-      } catch {
-        onTaskRestored?.(task.id)
-        toast.error(t.taskRow.deleteError)
-      } finally {
-        onRefresh?.()
-        setDeletingId(null)
-      }
+      await softDeleteWithUndo({
+        task,
+        messages: {
+          deletedToast: t.taskRow.deletedToast,
+          undo: t.taskRow.undo,
+          deleteError: t.taskRow.deleteError,
+          restoreError: t.taskRow.restoreError,
+        },
+        softDelete: softDeleteTask,
+        restore: restoreTask,
+        onOptimisticDelete: (deletedTask) => {
+          onTaskDeleted?.(deletedTask.id)
+        },
+        onOptimisticRestore: (restoredTask) => {
+          onTaskRestored?.(restoredTask.id)
+        },
+        onDeleteSuccess: () => {
+          onRefresh?.()
+        },
+        onRestoreSuccess: () => {
+          onRefresh?.()
+        },
+      })
+      setConfirmDeleteTask(null)
+      setDeletingId(null)
     })
   }
 
@@ -397,9 +392,9 @@ export function TodaysTasksWidget({ tasks = [], onStatusUpdated, onTaskDeleted, 
             setConfirmDeleteTask(null)
           }
         }}
-        title={t.widgets.todaysTasks.confirmDeleteTitle}
-        description={t.widgets.todaysTasks.confirmDeleteDescription.replace('{title}', confirmDeleteTask?.title ?? '')}
-        confirmLabel={t.widgets.todaysTasks.moveToRecycleBin}
+        title={t.tasks.deleteConfirmTitle}
+        description={t.tasks.deleteConfirmDescription.replace('{title}', confirmDeleteTask?.title ?? '')}
+        confirmLabel={t.tasks.deleteConfirmAction}
         onConfirm={handleConfirmDelete}
         isPending={isPending && deletingId !== null}
       />

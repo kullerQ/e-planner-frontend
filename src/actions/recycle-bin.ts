@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { serverApiFetch } from '@/lib/api/server'
 
 const taskIdSchema = z.string().min(1, 'Task id is required')
+const taskIdsSchema = z.array(taskIdSchema).min(1, 'At least one task id is required')
 
 async function assertResponse(res: Response, action: string): Promise<void> {
   if (!res.ok) {
@@ -25,6 +26,15 @@ export async function restoreTask(taskId: string): Promise<void> {
 
   revalidateTag(`task-${parsedTaskId.data}`, 'max')
   revalidateTag('tasks', 'max')
+}
+
+export async function restoreTasks(taskIds: string[]): Promise<void> {
+  const parsedTaskIds = taskIdsSchema.safeParse(taskIds)
+  if (!parsedTaskIds.success) {
+    throw new Error('Invalid task ids')
+  }
+
+  await Promise.all(parsedTaskIds.data.map((taskId) => restoreTask(taskId)))
 }
 
 export async function permanentlyDeleteTask(taskId: string): Promise<void> {

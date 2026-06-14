@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Messages } from '@/lib/i18n/types'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -119,6 +120,7 @@ function getGroupSwatchColor(key: string, groupsById: Map<string, TaskGroup>): s
 }
 
 export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
+  const router = useRouter()
   const { t } = useI18n()
   const tasksMessages = t.dashboard.tasks
   const groupByOptions = useMemo(
@@ -151,12 +153,14 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const setSortBy = useFilterStore((state) => state.setSortBy)
   const toggleSortDirection = useFilterStore((state) => state.toggleSortDirection)
   const openTaskSheet = useTaskSheetStore((state) => state.open)
-  const closeTaskSheet = useTaskSheetStore((state) => state.close)
+  const closeTaskSheetForce = useTaskSheetStore((state) => state.closeForce)
   const isSelecting = useSelectionStore((state) => state.isSelecting)
   const selectedIds = useSelectionStore((state) => state.selectedIds)
   const enterSelectMode = useSelectionStore((state) => state.enterSelectMode)
   const exitSelectMode = useSelectionStore((state) => state.exitSelectMode)
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks)
+  const pendingRestoreIdsRef = useRef<Set<string>>(new Set())
+  const deletedTaskSnapshotsRef = useRef<Map<string, Task>>(new Map())
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [optimisticGroups, setOptimisticGroups] = useState<TaskGroup[]>(groups)
 
@@ -170,7 +174,25 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const [deleteGroupName, setDeleteGroupName] = useState('')
 
   useEffect(() => {
-    setOptimisticTasks(tasks)
+    setOptimisticTasks((currentTasks) => {
+      const pendingRestoreIds = pendingRestoreIdsRef.current
+      const serverTaskIds = new Set(tasks.map((task) => task.id))
+
+      for (const taskId of pendingRestoreIds) {
+        if (serverTaskIds.has(taskId)) {
+          pendingRestoreIds.delete(taskId)
+        }
+      }
+
+      const mergedTasks = [...tasks]
+      for (const task of currentTasks) {
+        if (pendingRestoreIds.has(task.id) && !serverTaskIds.has(task.id)) {
+          mergedTasks.push(task)
+        }
+      }
+
+      return mergedTasks
+    })
   }, [tasks])
 
   useEffect(() => {
@@ -182,8 +204,8 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
       return
     }
 
-    closeTaskSheet()
-  }, [closeTaskSheet, isSelecting])
+    closeTaskSheetForce()
+  }, [closeTaskSheetForce, isSelecting])
 
   useEffect(() => {
     if (!isSelecting) {
@@ -220,17 +242,53 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
     setOptimisticTasks((currentTasks) => currentTasks.filter((task) => !deletedIdSet.has(task.id)))
   }
 
+  function handleBulkRestored(taskIds: string[]) {
+    const restoredTasks = taskIds
+      .map((taskId) => tasksById.get(taskId))
+      .filter((task): task is Task => task !== undefined)
+
+    if (restoredTasks.length === 0) {
+      return
+    }
+
+    setOptimisticTasks((currentTasks) => {
+      const existingTaskIds = new Set(currentTasks.map((task) => task.id))
+      const nextTasks = [...currentTasks]
+      for (const task of restoredTasks) {
+        if (!existingTaskIds.has(task.id)) {
+          nextTasks.push(task)
+        }
+      }
+      return nextTasks
+    })
+  }
+
   function handleTaskDeleted(taskId: string) {
-    setOptimisticTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId))
+    pendingRestoreIdsRef.current.delete(taskId)
+    setOptimisticTasks((currentTasks) => {
+      const deletedTask = currentTasks.find((task) => task.id === taskId)
+      if (deletedTask !== undefined) {
+        deletedTaskSnapshotsRef.current.set(taskId, deletedTask)
+      }
+      return currentTasks.filter((task) => task.id !== taskId)
+    })
+    closeTaskSheetForce()
   }
 
   function handleTaskRestored(restoredTask: Task) {
+    const snapshot = deletedTaskSnapshotsRef.current.get(restoredTask.id) ?? restoredTask
+    deletedTaskSnapshotsRef.current.delete(restoredTask.id)
+    pendingRestoreIdsRef.current.add(snapshot.id)
     setOptimisticTasks((currentTasks) => {
-      if (currentTasks.some((task) => task.id === restoredTask.id)) {
+      if (currentTasks.some((task) => task.id === snapshot.id)) {
         return currentTasks
       }
-      return [...currentTasks, restoredTask]
+      return [...currentTasks, snapshot]
     })
+  }
+
+  function handleTaskRestoreSuccess() {
+    router.refresh()
   }
 
   function handleBulkTagsAdded(taskIds: string[], tagIds: string[]) {
@@ -262,6 +320,17 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
     )
   }
 
+  function handleBulkMoved(taskIds: string[], groupId: string | null) {
+    const movedTaskIdSet = new Set(taskIds)
+    setOptimisticTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        movedTaskIdSet.has(task.id)
+          ? { ...task, groupId }
+          : task
+      )
+    )
+  }
+
   const groupedTasks = useMemo(() => {
     const grouped = groupTasks(optimisticTasks, effectiveGroupBy, optimisticGroups)
     const withSortedTasks = new Map<string, Task[]>()
@@ -281,6 +350,9 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
   const tagsById = useMemo(() => {
     return new Map(tags.map((tag) => [tag.id, tag] as const))
   }, [tags])
+  const tasksById = useMemo(() => {
+    return new Map(tasks.map((task) => [task.id, task] as const))
+  }, [tasks])
 
   function toggleGroupCollapse(groupKey: string) {
     setCollapsedGroups((current) => ({
@@ -654,6 +726,7 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
                           onTaskStatusOptimistic={handleTaskStatusOptimistic}
                           onTaskDeleted={handleTaskDeleted}
                           onTaskRestored={handleTaskRestored}
+                          onTaskRestoreSuccess={handleTaskRestoreSuccess}
                         />
                       ))}
                     </div>
@@ -668,6 +741,8 @@ export function TaskListClient({ tasks, groups, tags }: TaskListClientProps) {
             groups={groups}
             tags={tags}
             onBulkDeleted={handleBulkDeleted}
+            onBulkRestored={handleBulkRestored}
+            onBulkMoved={handleBulkMoved}
             onBulkTagsAdded={handleBulkTagsAdded}
           />
         ) : null}

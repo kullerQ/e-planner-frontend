@@ -40,23 +40,35 @@ export function ConfirmDialog({
   const [internalPending, setInternalPending] = useState(false)
   const pending = isPending || internalPending
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
     if (pending) return
 
     setInternalPending(true)
     try {
       await onConfirm()
-      onOpenChange(false)
+      // Defer closing so the pointer event cannot reach elements under the dialog.
+      window.setTimeout(() => onOpenChange(false), 0)
     } finally {
       setInternalPending(false)
     }
   }
 
+  function stopBubble(event: React.SyntheticEvent) {
+    event.stopPropagation()
+  }
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogPortal>
-        <AlertDialogOverlay className="bg-black/40" />
+        <AlertDialogOverlay
+          className="fixed inset-0 z-50 bg-black/40"
+          onPointerDown={stopBubble}
+          onClick={stopBubble}
+        />
         <AlertDialogPrimitive.Content
+          onPointerDown={stopBubble}
+          onClick={stopBubble}
           className={cn(
             'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200',
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',

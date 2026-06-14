@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowDown01Icon, Delete02Icon } from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
+import { restoreTasks } from '@/actions/recycle-bin'
 import { bulkAddTags, bulkMoveToGroup, bulkSoftDelete } from '@/actions/tasks'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,8 @@ interface BulkSelectionPanelProps {
   groups: TaskGroup[]
   tags: Tag[]
   onBulkDeleted: (taskIds: string[]) => void
+  onBulkRestored: (taskIds: string[]) => void
+  onBulkMoved: (taskIds: string[], groupId: string | null) => void
   onBulkTagsAdded: (taskIds: string[], tagIds: string[]) => void
 }
 
@@ -33,6 +36,8 @@ export function BulkSelectionPanel({
   groups,
   tags,
   onBulkDeleted,
+  onBulkRestored,
+  onBulkMoved,
   onBulkTagsAdded,
 }: BulkSelectionPanelProps) {
   const { t } = useI18n()
@@ -98,14 +103,30 @@ export function BulkSelectionPanel({
     if (selectedCount === 0) {
       return
     }
+    const deletedTaskIds = [...selectedTaskIds]
 
     startTransition(async () => {
       try {
-        await bulkSoftDelete(selectedTaskIds)
-        onBulkDeleted(selectedTaskIds)
+        await bulkSoftDelete(deletedTaskIds)
+        onBulkDeleted(deletedTaskIds)
         clearSelection()
         exitSelectMode()
-        toast.info(t.bulkActions.successDeleted.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's'))
+        toast.success(t.bulkActions.successDeleted.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's'), {
+          action: {
+            label: t.bulkActions.undo,
+            onClick: () => {
+              onBulkRestored(deletedTaskIds)
+              startTransition(async () => {
+                try {
+                  await restoreTasks(deletedTaskIds)
+                } catch {
+                  onBulkDeleted(deletedTaskIds)
+                  toast.error(t.bulkActions.restoreError)
+                }
+              })
+            },
+          },
+        })
       } catch {
         toast.error(t.bulkActions.errorDelete)
       }
@@ -138,7 +159,10 @@ export function BulkSelectionPanel({
           onValueChange={(value) => {
             const groupId = value === '__none__' ? null : value
             runBulkAction(
-              () => bulkMoveToGroup(selectedTaskIds, groupId),
+              async () => {
+                await bulkMoveToGroup(selectedTaskIds, groupId)
+                onBulkMoved(selectedTaskIds, groupId)
+              },
               t.bulkActions.successMoved.replace('{count}', String(selectedCount)).replace('{plural}', selectedCount === 1 ? '' : 's')
             )
           }}
