@@ -98,9 +98,3 @@ src/
   stores/       # Zustand stores
   actions/      # server actions and domain operations
 ```
-
-## Development Notes
-
-- Package manager is `pnpm` only.
-- This frontend expects a compatible E-Planner backend API.
-- Keep secrets out of git (use local env files only).
