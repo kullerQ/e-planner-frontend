@@ -6,11 +6,11 @@ const JWT_SECRET = process.env['JWT_SECRET']
 const AUTH_ROUTES = ['/auth/login', '/auth/register']
 
 function isAuthRoute(pathname: string): boolean {
-  return AUTH_ROUTES.some((route) => pathname.startsWith(route))
+  return pathname === '/' || AUTH_ROUTES.some((route) => pathname.startsWith(route))
 }
 
 function isProtectedRoute(pathname: string): boolean {
-  return pathname === '/' || pathname.startsWith('/dashboard')
+  return pathname.startsWith('/dashboard')
 }
 
 async function hasValidAuthToken(request: NextRequest): Promise<boolean> {

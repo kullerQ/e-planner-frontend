@@ -50,10 +50,10 @@ export const messages = {
     fallbackDailyPhrase: 'Zrób jeden mały krok naprzód dzisiaj.',
   },
   dashboard: {
-    title: 'Dashboard',
+    title: 'Panel główny',
     welcome: 'Witaj w E-Planner',
     nav: {
-      dashboard: 'Dashboard',
+      dashboard: 'Panel główny',
       list: 'Lista',
       calendar: 'Kalendarz',
       folders: 'Foldery',
